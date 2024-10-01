@@ -104,7 +104,7 @@ def draw_dashboard(stdscr):
         stdscr.addstr(8,0, "Memory: ")
         # Display metrics
         stdscr.addstr(0, 0, "              Blissful Nvidia CLI Tool", curses.color_pair(5))
-        stdscr.addstr(1, 0, "-----------------------------------------------------------")
+        stdscr.addstr(1, 0, "-------------------------------------------------------")
         stdscr.addstr(3, 18, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
         stdscr.addstr(4, 18, f"{core_clock}Mhz core / {mem_clock}Mhz mem", curses.color_pair(clock_color))
         stdscr.addstr(5, 18, f"{current_temperature}°C / Fan: {fan_speed}%", curses.color_pair(temp_color))
