@@ -34,13 +34,12 @@ Created on: Tue Oct 1, 2024
 import curses
 import argparse
 import time
-from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceSetGpcClkVfOffset, nvmlDeviceSetMemClkVfOffset, nvmlDeviceGetFanSpeed, nvmlDeviceSetPersistenceMode, NVML_CLOCK_GRAPHICS, NVML_CLOCK_MEM, nvmlDeviceGetName, nvmlDeviceSetFanSpeed_v2, nvmlDeviceSetDefaultFanSpeed_v2
-from pynvml import nvmlDeviceGetTemperature, nvmlDeviceGetPowerUsage, nvmlDeviceGetUtilizationRates, nvmlDeviceGetMemoryInfo, nvmlDeviceSetPowerManagementLimit, nvmlDeviceGetClockInfo, nvmlDeviceGetPowerManagementDefaultLimit, nvmlDeviceGetPowerManagementLimit, nvmlDeviceGetNumFans
+from pynvml import *
 parser = argparse.ArgumentParser(description="Blissful Nvidia Tool")
 parser.add_argument("--gpu-number", type=int, default=0, help="Specify the GPU index (default: 0)")
-parser.add_argument("--set-clocks", nargs=2, type=int, help="Set core and memory clock offsets (in MHz). Example: --set-clocks 150 500")
-parser.add_argument("--set-power-limit", type=int, help="Set the power limit (in watts). Example: --power-limit 300")
-parser.add_argument("--set-max-fan", action='store_true', help="Set fan to maximum speed (100%)")
+parser.add_argument("--set-clocks", nargs=2, type=int, help="Set core and memory clock offsets (in MHz) respectively. Example: --set-clocks -150 500")
+parser.add_argument("--set-power-limit", type=int, help="Set the power limit (in watts). Example: --set-power-limit 300")
+parser.add_argument("--set-max-fan", action='store_true', help="Set fan to maximum speed")
 parser.add_argument("--set-auto-fan", action='store_true', help="Reset fan control to automatic mode")
 
 
