@@ -33,7 +33,6 @@ Created on: Tue Oct 1, 2024
 
 import curses
 import argparse
-import time
 from pynvml import *
 parser = argparse.ArgumentParser(description="Blissful Nvidia Tool")
 parser.add_argument("--gpu-number", type=int, default=0, help="Specify the GPU index (default: 0)")
@@ -41,50 +40,84 @@ parser.add_argument("--set-clocks", nargs=2, type=int, help="Set core and memory
 parser.add_argument("--set-power-limit", type=int, help="Set the power limit (in watts). Example: --set-power-limit 300")
 parser.add_argument("--set-max-fan", action='store_true', help="Set fan to maximum speed")
 parser.add_argument("--set-auto-fan", action='store_true', help="Reset fan control to automatic mode")
-
-
-def set_clock_offset(gpu, core_offset, mem_offset):
-    nvmlDeviceSetGpcClkVfOffset(gpu, core_offset)
-    nvmlDeviceSetMemClkVfOffset(gpu, mem_offset)
+parser.add_argument("--reactive-color", action='store_true', help="Uses color to indicate the intensity of values")
 
 
 def draw_dashboard(stdscr):
     stdscr.clear()
     stdscr.nodelay(True)  # Non-blocking input
     curses.curs_set(0)    # Hide cursor
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_GREEN, -1)
+    curses.init_pair(2, curses.COLOR_RED, -1)
+    curses.init_pair(3, curses.COLOR_CYAN, -1)
+    curses.init_pair(4, curses.COLOR_YELLOW, -1)
+    curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+    curses.init_pair(6, curses.COLOR_BLUE, -1)
+    curses.init_pair(7, curses.COLOR_WHITE, -1)
+    temp_color = 7
+    power_color = 7
+    clock_color = 7
 
     while True:
         # Read metrics
         gpu_name = nvmlDeviceGetName(gpu)
         fan_speed = nvmlDeviceGetFanSpeed(gpu)
-        temperature = nvmlDeviceGetTemperature(gpu, 0)
+        current_temperature = nvmlDeviceGetTemperature(gpu, 0)
         current_power_usage = nvmlDeviceGetPowerUsage(gpu) / 1000  # Convert mW to W
         utilization = nvmlDeviceGetUtilizationRates(gpu)
         mem_info = nvmlDeviceGetMemoryInfo(gpu)
         core_clock = nvmlDeviceGetClockInfo(gpu, NVML_CLOCK_GRAPHICS)
+        max_core_clock = nvmlDeviceGetMaxClockInfo(gpu, NVML_CLOCK_GRAPHICS)
         mem_clock = nvmlDeviceGetClockInfo(gpu, NVML_CLOCK_MEM)
         current_power_limit = nvmlDeviceGetPowerManagementLimit(gpu) / 1000
         default_power_limit = nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
 
+        if args.reactive_color:
+            # Define Colors
+            temp_color = 1
+            if current_temperature > 65:
+                temp_color = 4
+            elif current_temperature > 80:
+                temp_color = 2
+
+            current_power_percentage = (current_power_usage / current_power_limit) * 100
+            power_color = 1
+            if current_power_percentage > 70:
+                power_color = 4
+            elif current_power_percentage > 90:
+                power_color = 2
+
+            current_clock_percentage = (core_clock / max_core_clock) * 100
+            clock_color = 1
+            if current_clock_percentage > 70:
+                clock_color = 4
+            elif current_clock_percentage > 90:
+                clock_color = 2
+
+        stdscr.addstr(3,0, "GPU: ")
+        stdscr.addstr(4,0, "Clock Frequency: ")
+        stdscr.addstr(5,0, "Temp: ")
+        stdscr.addstr(6,0, "Power: ")
+        stdscr.addstr(7,0, "Utilization: ")
+        stdscr.addstr(8,0, "Memory: ")
         # Display metrics
-        stdscr.addstr(0, 0, "Blissful Nvidia CLI Tool")
-        stdscr.addstr(1, 0, "--------------------")
-        stdscr.addstr(3, 0, f"GPU: {args.gpu_number} - {gpu_name} ")
-        stdscr.addstr(4, 0, f"Current Clock frequency: {core_clock}Mhz core / {mem_clock}Mhz mem")
-        stdscr.addstr(5, 0, f"Temp: {temperature}°C Fan: {fan_speed}%")
-        stdscr.addstr(6, 0, f"Power: {current_power_usage} / {current_power_limit} W ({default_power_limit}W)")
-        stdscr.addstr(7, 0, f"GPU Utilization: {utilization.gpu}%")
-        stdscr.addstr(8, 0, f"Memory Utilization: {utilization.memory}%")
-        stdscr.addstr(9, 0, f"Memory Info: {mem_info.used / (1024**2)} MB / {mem_info.total / (1024**2)} MB")
+        stdscr.addstr(0, 0, "              Blissful Nvidia CLI Tool", curses.color_pair(5))
+        stdscr.addstr(1, 0, "-----------------------------------------------------------")
+        stdscr.addstr(3, 18, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
+        stdscr.addstr(4, 18, f"{core_clock}Mhz core / {mem_clock}Mhz mem", curses.color_pair(clock_color))
+        stdscr.addstr(5, 18, f"{current_temperature}°C / Fan: {fan_speed}%", curses.color_pair(temp_color))
+        stdscr.addstr(6, 18, f"{current_power_usage} / {current_power_limit} W (Default Limit: {default_power_limit}W)", curses.color_pair(power_color))
+        stdscr.addstr(7, 18, f"Core: {utilization.gpu}% / Mem: {utilization.memory}%")
+        stdscr.addstr(8, 18, f"{mem_info.used / (1024**2)} MB / {mem_info.total / (1024**2)} MB")
 
         # Refresh the display
         stdscr.refresh()
-
-        # Check for exit condition
+        stdscr.timeout(1000)
         key = stdscr.getch()
         if key == ord('q'):
             break
-        time.sleep(1)
         stdscr.clear()
 
 
@@ -94,8 +127,8 @@ gpu = nvmlDeviceGetHandleByIndex(args.gpu_number)
 
 if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_fan:
     print("Blissful Nvidia CLI Tool Non-interactive Mode")
-    print("_________________________________________")
-    print("User accepts ALL risks of overclocking/altering power limits!")
+    print("_____________________________________________")
+    print("User accepts ALL risks of overclocking/altering power limits/fan settings!")
     print("Additionally, root permission is needed for these changes and the script will fail without it!")
     print()
     print("Enabling persistence...")
@@ -120,7 +153,8 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
     if args.set_clocks:
         core_offset, mem_offset = args.set_clocks
         print(f"Attempting to set core clock offset to {core_offset} MHz and memory clock offset to {mem_offset} MHz...")
-        set_clock_offset(gpu, core_offset, mem_offset * 2)  # Multiply memoffset by 2 so it's equivalent to offset in GWE and Windows
+        nvmlDeviceSetGpcClkVfOffset(gpu, core_offset)
+        nvmlDeviceSetMemClkVfOffset(gpu, mem_offset * 2)  # Multiply memoffset by 2 so it's equivalent to offset in GWE and Windows
         print(f"Set core clock offset to {core_offset} MHz and memory clock offset to {mem_offset} MHz!")
         print()
     if args.set_power_limit:
