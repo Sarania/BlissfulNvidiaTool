@@ -102,11 +102,11 @@ def draw_dashboard(stdscr):
         stdscr.addstr(0, 0, "              Blissful Nvidia CLI Tool", curses.color_pair(5))
         stdscr.addstr(1, 0, "-------------------------------------------------------")
         stdscr.addstr(3, 18, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
-        stdscr.addstr(4, 18, f"{core_clock}Mhz core / {mem_clock}Mhz mem", curses.color_pair(clock_color))
+        stdscr.addstr(4, 18, f"{core_clock} Mhz core / {mem_clock} Mhz mem", curses.color_pair(clock_color))
         stdscr.addstr(5, 18, f"{current_temperature}°C / Fan: {fan_speed}%", curses.color_pair(temp_color))
-        stdscr.addstr(6, 18, f"{current_power_usage} / {current_power_limit} W (Default Limit: {default_power_limit}W)", curses.color_pair(power_color))
+        stdscr.addstr(6, 18, f"{current_power_usage:.2f} / {current_power_limit:.2f} W (Default Limit: {default_power_limit:.2f} W)", curses.color_pair(power_color))
         stdscr.addstr(7, 18, f"Core: {utilization.gpu}% / Memory Controller: {utilization.memory}%", curses.color_pair(util_color))
-        stdscr.addstr(8, 18, f"{mem_info.used / (1024**2)} / {mem_info.total / (1024**2)} MB", curses.color_pair(vram_color))
+        stdscr.addstr(8, 18, f"{mem_info.used / (1024**2):.2f} / {mem_info.total / (1024**2):.2f} MB", curses.color_pair(vram_color))
 
         # Refresh the display
         stdscr.refresh()
