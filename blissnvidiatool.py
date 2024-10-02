@@ -44,6 +44,14 @@ parser.add_argument("--reactive-color", action='store_true', help="Uses color to
 
 
 def draw_dashboard(stdscr):
+    def set_color(value, threshold_caution, threshold_warn):
+        if value > threshold_caution and value < threshold_warn:
+            return 4
+        elif value > threshold_warn:
+            return 2
+        else:
+            return 1
+
     stdscr.clear()
     stdscr.nodelay(True)  # Non-blocking input
     curses.curs_set(0)    # Hide cursor
@@ -59,9 +67,10 @@ def draw_dashboard(stdscr):
     temp_color = 7
     power_color = 7
     clock_color = 7
+    util_color = 7
+    vram_color = 7
 
     while True:
-        # Read metrics
         gpu_name = nvmlDeviceGetName(gpu)
         fan_speed = nvmlDeviceGetFanSpeed(gpu)
         current_temperature = nvmlDeviceGetTemperature(gpu, 0)
@@ -73,28 +82,15 @@ def draw_dashboard(stdscr):
         mem_clock = nvmlDeviceGetClockInfo(gpu, NVML_CLOCK_MEM)
         current_power_limit = nvmlDeviceGetPowerManagementLimit(gpu) / 1000
         default_power_limit = nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
-
+        current_power_percentage = (current_power_usage / current_power_limit) * 100
+        current_clock_percentage = (core_clock / max_core_clock) * 100
+        current_vram_percentage = (mem_info.used / mem_info.total) * 100
         if args.reactive_color:
-            # Define Colors
-            temp_color = 1
-            if current_temperature > 65:
-                temp_color = 4
-            elif current_temperature > 80:
-                temp_color = 2
-
-            current_power_percentage = (current_power_usage / current_power_limit) * 100
-            power_color = 1
-            if current_power_percentage > 70:
-                power_color = 4
-            elif current_power_percentage > 90:
-                power_color = 2
-
-            current_clock_percentage = (core_clock / max_core_clock) * 100
-            clock_color = 1
-            if current_clock_percentage > 70:
-                clock_color = 4
-            elif current_clock_percentage > 90:
-                clock_color = 2
+            temp_color = set_color(current_temperature, 65, 80)
+            power_color = set_color(current_power_percentage, 70, 90)
+            clock_color = set_color(current_clock_percentage, 70, 90)
+            util_color = set_color(utilization.gpu, 70, 90)
+            vram_color = set_color(current_vram_percentage, 70, 90)
 
         stdscr.addstr(3,0, "GPU: ")
         stdscr.addstr(4,0, "Clock Frequency: ")
@@ -109,8 +105,8 @@ def draw_dashboard(stdscr):
         stdscr.addstr(4, 18, f"{core_clock}Mhz core / {mem_clock}Mhz mem", curses.color_pair(clock_color))
         stdscr.addstr(5, 18, f"{current_temperature}°C / Fan: {fan_speed}%", curses.color_pair(temp_color))
         stdscr.addstr(6, 18, f"{current_power_usage} / {current_power_limit} W (Default Limit: {default_power_limit}W)", curses.color_pair(power_color))
-        stdscr.addstr(7, 18, f"Core: {utilization.gpu}% / Memory Controller: {utilization.memory}%")
-        stdscr.addstr(8, 18, f"{mem_info.used / (1024**2)} / {mem_info.total / (1024**2)} MB")
+        stdscr.addstr(7, 18, f"Core: {utilization.gpu}% / Memory Controller: {utilization.memory}%", curses.color_pair(util_color))
+        stdscr.addstr(8, 18, f"{mem_info.used / (1024**2)} / {mem_info.total / (1024**2)} MB", curses.color_pair(vram_color))
 
         # Refresh the display
         stdscr.refresh()
