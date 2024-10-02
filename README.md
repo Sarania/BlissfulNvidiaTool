@@ -3,7 +3,7 @@
   <img src="screenshot.png" alt="Blissful Nvidia Tool" />
 </div>
 
-This is just a simple tool for monitoring, controlling, and over or underclocking your modern (Maxwell or higher should be supported) Nvidia GPU from the command line. It was written for Linux but might work on Windows too. It only requires Python3 and nvidia-ml-py(Note pynvml is renamed to this now see: https://pypi.org/project/nvidia-ml-py/) and Nvidia Driver 555.xx or greater for overclocking functions. You accept ALL responsibility for the use of this tool. Monitoring can be done as any user but overclocking control requires root/admin. License is MIT.
+This is just a simple tool for monitoring, controlling, and over or underclocking your modern (Maxwell or higher should be supported) Nvidia GPU from the command line on Linux. It only requires Python3 and nvidia-ml-py(Note pynvml is renamed to this now see: https://pypi.org/project/nvidia-ml-py/) and Nvidia Driver 555.xx or greater for overclocking functions. You accept ALL responsibility for the use of this tool. Monitoring can be done as any user but overclocking control requires root/admin. License is MIT.
 
 ## Usage
 
