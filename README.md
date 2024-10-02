@@ -7,6 +7,7 @@ This is just a simple tool for monitoring, controlling, and over or underclockin
 
 ```
 python blissnvidiatool.py  # Run a monitor for the GPU
+python blissnvidiatool.py --reactive-color  # Run a colorful monitor for the GPU
 # Any of the below need root/admin permissions!
 python blissnvidiatool.py --set-clocks -150 1000  # Set the GPU core offset to -150Mhz and GPU memory offset to +1000Mhz. 
 # Note the memory value is the same as that specified in GreenWithEnvy/MSI Afterburner, NOT the same as nvidia-settings!
