@@ -101,7 +101,7 @@ def draw_dashboard(stdscr):
         stdscr.addstr(5,0, "Temp: ")
         stdscr.addstr(6,0, "Power: ")
         stdscr.addstr(7,0, "Utilization: ")
-        stdscr.addstr(8,0, "Memory: ")
+        stdscr.addstr(8,0, "VRAM Usage: ")
         # Display metrics
         stdscr.addstr(0, 0, "              Blissful Nvidia CLI Tool", curses.color_pair(5))
         stdscr.addstr(1, 0, "-------------------------------------------------------")
@@ -109,8 +109,8 @@ def draw_dashboard(stdscr):
         stdscr.addstr(4, 18, f"{core_clock}Mhz core / {mem_clock}Mhz mem", curses.color_pair(clock_color))
         stdscr.addstr(5, 18, f"{current_temperature}°C / Fan: {fan_speed}%", curses.color_pair(temp_color))
         stdscr.addstr(6, 18, f"{current_power_usage} / {current_power_limit} W (Default Limit: {default_power_limit}W)", curses.color_pair(power_color))
-        stdscr.addstr(7, 18, f"Core: {utilization.gpu}% / Mem: {utilization.memory}%")
-        stdscr.addstr(8, 18, f"{mem_info.used / (1024**2)} MB / {mem_info.total / (1024**2)} MB")
+        stdscr.addstr(7, 18, f"Core: {utilization.gpu}% / Memory Controller: {utilization.memory}%")
+        stdscr.addstr(8, 18, f"{mem_info.used / (1024**2)} / {mem_info.total / (1024**2)} MB")
 
         # Refresh the display
         stdscr.refresh()
@@ -120,7 +120,7 @@ def draw_dashboard(stdscr):
             break
         stdscr.clear()
 
-
+# Execution begins here
 args = parser.parse_args()
 nvmlInit()
 gpu = nvmlDeviceGetHandleByIndex(args.gpu_number)
