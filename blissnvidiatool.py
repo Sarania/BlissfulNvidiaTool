@@ -1,13 +1,13 @@
 """
 =================================================
-                  Blissful Nvidia CLI Tool
+                  Blissful Nvidia Tool
 =================================================
 Description:
 Simple CLI tool for monitoring and overclocking Nvidia Graphics Cards
 
 Dependencies:
-nvidia-ml-py - NOT pynvml which is the older, deprecated version and does not have the needed functionality.
-Nvidia Driver 555.xx or greater
+nvidia-ml-py - NOT pynvml which is the older, deprecated version and does not have the needed functionality for all features.
+Nvidia Driver 555.xx or greater for all features.
 
 License:
 MIT License - See below for full text
@@ -99,8 +99,8 @@ def draw_dashboard(stdscr):
         stdscr.addstr(6,0, "Power: ")
         stdscr.addstr(7,0, "Utilization: ")
         stdscr.addstr(8,0, "VRAM Usage: ")
-        stdscr.addstr(0, 0, "                Blissful Nvidia CLI Tool", curses.color_pair(5))
-        stdscr.addstr(1, 0, "--------------------------------------------------------")
+        stdscr.addstr(0, 0, "                    Blissful Nvidia Tool", curses.color_pair(5))
+        stdscr.addstr(1, 0, "------------------------------------------------------------")
         stdscr.addstr(3, 18, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
         stdscr.addstr(4, 18, f"{core_clock} Mhz core / {mem_clock} Mhz mem", curses.color_pair(clock_color))
         stdscr.addstr(5, 18, f"{current_temperature}°C / Fan: {fan_speed}%", curses.color_pair(temp_color))
@@ -121,8 +121,8 @@ nvmlInit()
 gpu = nvmlDeviceGetHandleByIndex(args.gpu_number)
 
 if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_fan:
-    print("Blissful Nvidia CLI Tool Non-interactive Mode")
-    print("_____________________________________________")
+    print("Blissful Nvidia Tool Non-interactive Mode")
+    print("_________________________________________")
     print("User accepts ALL risks of overclocking/altering power limits/fan settings!")
     print("Additionally, root permission is needed for these changes and the script will fail without it!")
     print()
