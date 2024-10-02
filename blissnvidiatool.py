@@ -36,6 +36,7 @@ import argparse
 from pynvml import *
 parser = argparse.ArgumentParser(description="Blissful Nvidia Tool")
 parser.add_argument("--gpu-number", type=int, default=0, help="Specify the GPU index (default: 0)")
+parser.add_argument("--refresh-rate", type=int, default=1000, help="Specify how often to refresh the monitor, in milliseconds. Default is 1000")
 parser.add_argument("--set-clocks", nargs=2, type=int, help="Set core and memory clock offsets (in MHz) respectively. Example: --set-clocks -150 500")
 parser.add_argument("--set-power-limit", type=int, help="Set the power limit (in watts). Example: --set-power-limit 300")
 parser.add_argument("--set-max-fan", action='store_true', help="Set fan to maximum speed")
@@ -98,7 +99,6 @@ def draw_dashboard(stdscr):
         stdscr.addstr(6,0, "Power: ")
         stdscr.addstr(7,0, "Utilization: ")
         stdscr.addstr(8,0, "VRAM Usage: ")
-        # Display metrics
         stdscr.addstr(0, 0, "                Blissful Nvidia CLI Tool", curses.color_pair(5))
         stdscr.addstr(1, 0, "--------------------------------------------------------")
         stdscr.addstr(3, 18, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
@@ -108,9 +108,8 @@ def draw_dashboard(stdscr):
         stdscr.addstr(7, 18, f"Core: {utilization.gpu}% / Memory Controller: {utilization.memory}%", curses.color_pair(util_color))
         stdscr.addstr(8, 18, f"{mem_info.used / (1024**2):.2f} / {mem_info.total / (1024**2):.2f} MB", curses.color_pair(vram_color))
 
-        # Refresh the display
         stdscr.refresh()
-        stdscr.timeout(1000)
+        stdscr.timeout(args.refresh_rate)
         key = stdscr.getch()
         if key == ord('q'):
             break
