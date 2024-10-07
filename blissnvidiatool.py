@@ -45,13 +45,25 @@ parser.add_argument("--reactive-color", action='store_true', help="Uses color to
 
 
 def draw_dashboard(stdscr):
+    """
+    Main function for drawing monitor, takes in a screen pointer
+    """
     def set_color(value, threshold_caution, threshold_warn):
+        """
+        Helper function to return color values based on current readings, takes in the value and thresholds to check
+        """
         if threshold_caution < value < threshold_warn:
             return 4
         elif value > threshold_warn:
             return 2
         else:
             return 1
+
+    def add_sign(offset):
+        """
+        Helper function to add a + sign to positive numbers and output them back
+        """
+        return f"+{offset}" if offset > 0 else offset
 
     stdscr.clear()
     stdscr.nodelay(True)  # Non-blocking input
@@ -72,6 +84,16 @@ def draw_dashboard(stdscr):
     vram_color = 7
 
     while True:
+        current_core_offset = nv.nvmlDeviceGetGpcClkVfOffset(gpu)
+        current_mem_offset = nv.nvmlDeviceGetMemClkVfOffset(gpu) / 2
+        #  If the offset is negative, pynvml may return a value that is munged by truncated overflow
+        #  Since offsets will never legitimately be this large, this should be a safe fix.
+        if current_core_offset > 100000:
+            current_core_offset = current_core_offset - 4294966
+        if current_mem_offset > 100000:
+            current_mem_offset = current_mem_offset - 4294966
+        core_offset_sign = add_sign(current_core_offset)
+        mem_offset_sign = add_sign(current_mem_offset)
         gpu_name = nv.nvmlDeviceGetName(gpu)
         fan_speed = nv.nvmlDeviceGetFanSpeed(gpu)
         current_temperature = nv.nvmlDeviceGetTemperature(gpu, 0)
@@ -79,10 +101,14 @@ def draw_dashboard(stdscr):
         utilization = nv.nvmlDeviceGetUtilizationRates(gpu)
         mem_info = nv.nvmlDeviceGetMemoryInfo(gpu)
         core_clock = nv.nvmlDeviceGetClockInfo(gpu, nv.NVML_CLOCK_GRAPHICS)
+        core_clock_str = f"{core_clock} Mhz core ({core_offset_sign} Mhz)" if current_core_offset != 0 else f"{core_clock} Mhz core"
         max_core_clock = nv.nvmlDeviceGetMaxClockInfo(gpu, nv.NVML_CLOCK_GRAPHICS)
         mem_clock = nv.nvmlDeviceGetClockInfo(gpu, nv.NVML_CLOCK_MEM)
+        mem_clock_str = f"{mem_clock} Mhz mem ({mem_offset_sign} Mhz)" if current_mem_offset != 0 else f"{mem_clock} Mhz mem"
         current_power_limit = nv.nvmlDeviceGetPowerManagementLimit(gpu) / 1000
         default_power_limit = nv.nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
+        current_power_offset = current_power_limit - default_power_limit
+        power_offset_str = add_sign(current_power_offset)
         current_power_percentage = (current_power_usage / current_power_limit) * 100
         current_clock_percentage = (core_clock / max_core_clock) * 100
         current_vram_percentage = (mem_info.used / mem_info.total) * 100
@@ -102,9 +128,9 @@ def draw_dashboard(stdscr):
         stdscr.addstr(0, 0, "                    Blissful Nvidia Tool", curses.color_pair(5))
         stdscr.addstr(1, 0, "------------------------------------------------------------")
         stdscr.addstr(3, 18, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
-        stdscr.addstr(4, 18, f"{core_clock} Mhz core / {mem_clock} Mhz mem", curses.color_pair(clock_color))
+        stdscr.addstr(4, 18, f"{core_clock_str} / {mem_clock_str}", curses.color_pair(clock_color))
         stdscr.addstr(5, 18, f"{current_temperature}°C / Fan: {fan_speed}%", curses.color_pair(temp_color))
-        stdscr.addstr(6, 18, f"{current_power_usage:.2f} / {current_power_limit:.2f} W (Default Limit: {default_power_limit:.2f} W)", curses.color_pair(power_color))
+        stdscr.addstr(6, 18, f"{current_power_usage:.2f} / {current_power_limit:.2f} W ({power_offset_str} W)", curses.color_pair(power_color))
         stdscr.addstr(7, 18, f"Core: {utilization.gpu}% / Memory Controller: {utilization.memory}%", curses.color_pair(util_color))
         stdscr.addstr(8, 18, f"{mem_info.used / (1024**2):.2f} / {mem_info.total / (1024**2):.2f} MB", curses.color_pair(vram_color))
 
