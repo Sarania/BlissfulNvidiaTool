@@ -30,9 +30,9 @@ Created on: Tue Oct 1, 2024
 @author: Blyss Sarania
 =================================================
 """
-__VERSION__ = "1.00"
+
 import argparse
-import pynvml as nv
+from pynvml import *
 parser = argparse.ArgumentParser(description="Blissful Nvidia Tool")
 parser.add_argument("--gpu-number", type=int, default=0, help="Specify the GPU index (default: 0)")
 parser.add_argument("--refresh-rate", type=int, default=1000, help="Specify how often to refresh the monitor, in milliseconds. Default is 1000")
@@ -72,17 +72,17 @@ def draw_dashboard(stdscr):
     vram_color = 7
 
     while True:
-        gpu_name = nv.nvmlDeviceGetName(gpu)
-        fan_speed = nv.nvmlDeviceGetFanSpeed(gpu)
-        current_temperature = nv.nvmlDeviceGetTemperature(gpu, 0)
-        current_power_usage = nv.nvmlDeviceGetPowerUsage(gpu) / 1000  # Convert mW to W
-        utilization = nv.nvmlDeviceGetUtilizationRates(gpu)
-        mem_info = nv.nvmlDeviceGetMemoryInfo(gpu)
-        core_clock = nv.nvmlDeviceGetClockInfo(gpu, nv.NVML_CLOCK_GRAPHICS)
-        max_core_clock = nv.nvmlDeviceGetMaxClockInfo(gpu, nv.NVML_CLOCK_GRAPHICS)
-        mem_clock = nv.nvmlDeviceGetClockInfo(gpu, nv.NVML_CLOCK_MEM)
-        current_power_limit = nv.nvmlDeviceGetPowerManagementLimit(gpu) / 1000
-        default_power_limit = nv.nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
+        gpu_name = nvmlDeviceGetName(gpu)
+        fan_speed = nvmlDeviceGetFanSpeed(gpu)
+        current_temperature = nvmlDeviceGetTemperature(gpu, 0)
+        current_power_usage = nvmlDeviceGetPowerUsage(gpu) / 1000  # Convert mW to W
+        utilization = nvmlDeviceGetUtilizationRates(gpu)
+        mem_info = nvmlDeviceGetMemoryInfo(gpu)
+        core_clock = nvmlDeviceGetClockInfo(gpu, NVML_CLOCK_GRAPHICS)
+        max_core_clock = nvmlDeviceGetMaxClockInfo(gpu, NVML_CLOCK_GRAPHICS)
+        mem_clock = nvmlDeviceGetClockInfo(gpu, NVML_CLOCK_MEM)
+        current_power_limit = nvmlDeviceGetPowerManagementLimit(gpu) / 1000
+        default_power_limit = nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
         current_power_percentage = (current_power_usage / current_power_limit) * 100
         current_clock_percentage = (core_clock / max_core_clock) * 100
         current_vram_percentage = (mem_info.used / mem_info.total) * 100
@@ -93,12 +93,12 @@ def draw_dashboard(stdscr):
             util_color = set_color(utilization.gpu, 70, 90)
             vram_color = set_color(current_vram_percentage, 70, 90)
 
-        stdscr.addstr(3, 0, "GPU: ")
-        stdscr.addstr(4, 0, "Clock Frequency: ")
-        stdscr.addstr(5, 0, "Temp: ")
-        stdscr.addstr(6, 0, "Power: ")
-        stdscr.addstr(7, 0, "Utilization: ")
-        stdscr.addstr(8, 0, "VRAM Usage: ")
+        stdscr.addstr(3,0, "GPU: ")
+        stdscr.addstr(4,0, "Clock Frequency: ")
+        stdscr.addstr(5,0, "Temp: ")
+        stdscr.addstr(6,0, "Power: ")
+        stdscr.addstr(7,0, "Utilization: ")
+        stdscr.addstr(8,0, "VRAM Usage: ")
         stdscr.addstr(0, 0, "                    Blissful Nvidia Tool", curses.color_pair(5))
         stdscr.addstr(1, 0, "------------------------------------------------------------")
         stdscr.addstr(3, 18, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
@@ -115,11 +115,10 @@ def draw_dashboard(stdscr):
             break
         stdscr.clear()
 
-
 # Execution begins here
 args = parser.parse_args()
-nv.nvmlInit()
-gpu = nv.nvmlDeviceGetHandleByIndex(args.gpu_number)
+nvmlInit()
+gpu = nvmlDeviceGetHandleByIndex(args.gpu_number)
 
 if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_fan or args.set_custom_fan:
     print("Blissful Nvidia Tool Non-interactive Mode")
@@ -129,34 +128,34 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
     print()
     print("Enabling persistence...")
     print()
-    nv.nvmlDeviceSetPersistenceMode(gpu, 1)
+    nvmlDeviceSetPersistenceMode(gpu, 1)
     if args.set_max_fan:
-        num_fans = nv.nvmlDeviceGetNumFans(gpu)
+        num_fans = nvmlDeviceGetNumFans(gpu)
         print(f"Found {num_fans} fans!")
         print("Attempting to set fans to max speed...")
         for i in range(0, num_fans):
-            nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
-            nv.nvmlDeviceSetFanSpeed_v2(gpu, i, 100)
+            nvmlDeviceSetFanControlPolicy(gpu, i, NVML_FAN_POLICY_MANUAL)
+            nvmlDeviceSetFanSpeed_v2(gpu, i, 100)
         print("Fans set to max speed!")
         print()
     elif args.set_auto_fan:
-        num_fans = nv.nvmlDeviceGetNumFans(gpu)
+        num_fans = nvmlDeviceGetNumFans(gpu)
         print(f"Found {num_fans} fans!")
         print("Attempting to restore fans to automatic control...")
         for i in range(0, num_fans):
-            nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_TEMPERATURE_CONTINOUS_SW)
-            nv.nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
+            nvmlDeviceSetFanControlPolicy(gpu, i, NVML_FAN_POLICY_TEMPERATURE_CONTINOUS_SW)
+            nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
         print("Fans restored to automatic control!")
         print()
     elif args.set_custom_fan:
         new_speed = args.set_custom_fan
         if 101 > new_speed > 29:
-            num_fans = nv.nvmlDeviceGetNumFans(gpu)
+            num_fans = nvmlDeviceGetNumFans(gpu)
             print(f"Found {num_fans} fans!")
             print(f"Attempting to set fans to {new_speed}%...")
             for i in range(0, num_fans):
-                nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
-                nv.nvmlDeviceSetFanSpeed_v2(gpu, i, new_speed)
+                nvmlDeviceSetFanControlPolicy(gpu, i, NVML_FAN_POLICY_MANUAL)
+                nvmlDeviceSetFanSpeed_v2(gpu, i, new_speed)
             print(f"Fans set to {new_speed}%! Please monitor your temps as fan control policy is now MANUAL!")
             print()
         elif new_speed > 100:
@@ -167,16 +166,16 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
     if args.set_clocks:
         core_offset, mem_offset = args.set_clocks
         print(f"Attempting to set core clock offset to {core_offset} MHz and memory clock offset to {mem_offset} MHz...")
-        nv.nvmlDeviceSetGpcClkVfOffset(gpu, core_offset)
-        nv.nvmlDeviceSetMemClkVfOffset(gpu, mem_offset * 2)  # Multiply memoffset by 2 so it's equivalent to offset in GWE and Windows
+        nvmlDeviceSetGpcClkVfOffset(gpu, core_offset)
+        nvmlDeviceSetMemClkVfOffset(gpu, mem_offset * 2)  # Multiply memoffset by 2 so it's equivalent to offset in GWE and Windows
         print(f"Set core clock offset to {core_offset} MHz and memory clock offset to {mem_offset} MHz!")
         print()
     if args.set_power_limit:
         print(f"Attempting to set power limit to {args.set_power_limit} W...")
-        nv.nvmlDeviceSetPowerManagementLimit(gpu, args.set_power_limit * 1000)
+        nvmlDeviceSetPowerManagementLimit(gpu, args.set_power_limit * 1000)
         print(f"Power limit set to {args.set_power_limit} W!")
         print()
 else:
     import curses
     curses.wrapper(draw_dashboard)
-nv.nvmlShutdown()
+nvmlShutdown()
