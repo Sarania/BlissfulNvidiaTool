@@ -31,7 +31,6 @@ Created on: Tue Oct 1, 2024
 =================================================
 """
 
-import curses
 import argparse
 from pynvml import *
 parser = argparse.ArgumentParser(description="Blissful Nvidia Tool")
@@ -39,14 +38,15 @@ parser.add_argument("--gpu-number", type=int, default=0, help="Specify the GPU i
 parser.add_argument("--refresh-rate", type=int, default=1000, help="Specify how often to refresh the monitor, in milliseconds. Default is 1000")
 parser.add_argument("--set-clocks", nargs=2, type=int, help="Set core and memory clock offsets (in MHz) respectively. Example: --set-clocks -150 500")
 parser.add_argument("--set-power-limit", type=int, help="Set the power limit (in watts). Example: --set-power-limit 300")
-parser.add_argument("--set-max-fan", action='store_true', help="Set fan to maximum speed")
+parser.add_argument("--set-max-fan", action='store_true', help="Set all fans to maximum speed")
 parser.add_argument("--set-auto-fan", action='store_true', help="Reset fan control to automatic mode")
+parser.add_argument("--set-custom-fan", type=int, help="Set a custom fan percentage. !BE CAREFUL! as this changes the fan control policy to manual!!! Only values 30-100 are accepted. ")
 parser.add_argument("--reactive-color", action='store_true', help="Uses color to indicate the intensity of values")
 
 
 def draw_dashboard(stdscr):
     def set_color(value, threshold_caution, threshold_warn):
-        if value > threshold_caution and value < threshold_warn:
+        if threshold_caution < value < threshold_warn:
             return 4
         elif value > threshold_warn:
             return 2
@@ -120,7 +120,7 @@ args = parser.parse_args()
 nvmlInit()
 gpu = nvmlDeviceGetHandleByIndex(args.gpu_number)
 
-if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_fan:
+if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_fan or args.set_custom_fan:
     print("Blissful Nvidia Tool Non-interactive Mode")
     print("_________________________________________")
     print("User accepts ALL risks of overclocking/altering power limits/fan settings!")
@@ -134,17 +134,35 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
         print(f"Found {num_fans} fans!")
         print("Attempting to set fans to max speed...")
         for i in range(0, num_fans):
+            nvmlDeviceSetFanControlPolicy(gpu, i, NVML_FAN_POLICY_MANUAL)
             nvmlDeviceSetFanSpeed_v2(gpu, i, 100)
         print("Fans set to max speed!")
         print()
-    if args.set_auto_fan:
+    elif args.set_auto_fan:
         num_fans = nvmlDeviceGetNumFans(gpu)
         print(f"Found {num_fans} fans!")
         print("Attempting to restore fans to automatic control...")
         for i in range(0, num_fans):
+            nvmlDeviceSetFanControlPolicy(gpu, i, NVML_FAN_POLICY_TEMPERATURE_CONTINOUS_SW)
             nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
         print("Fans restored to automatic control!")
         print()
+    elif args.set_custom_fan:
+        new_speed = args.set_custom_fan
+        if 101 > new_speed > 29:
+            num_fans = nvmlDeviceGetNumFans(gpu)
+            print(f"Found {num_fans} fans!")
+            print(f"Attempting to set fans to {new_speed}%...")
+            for i in range(0, num_fans):
+                nvmlDeviceSetFanControlPolicy(gpu, i, NVML_FAN_POLICY_MANUAL)
+                nvmlDeviceSetFanSpeed_v2(gpu, i, new_speed)
+            print(f"Fans set to {new_speed}%! Please monitor your temps as fan control policy is now MANUAL!")
+            print()
+        elif new_speed > 100:
+            print(f"Value {new_speed} invalid for fan control!")
+        else:
+            print("Refusing to set fans below 30%! Sorry!")
+            print()
     if args.set_clocks:
         core_offset, mem_offset = args.set_clocks
         print(f"Attempting to set core clock offset to {core_offset} MHz and memory clock offset to {mem_offset} MHz...")
@@ -158,4 +176,6 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
         print(f"Power limit set to {args.set_power_limit} W!")
         print()
 else:
+    import curses
     curses.wrapper(draw_dashboard)
+nvmlShutdown()
