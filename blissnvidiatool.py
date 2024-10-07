@@ -96,6 +96,7 @@ def draw_dashboard(stdscr):
         nv.nvmlDeviceSetPersistenceMode(gpu, 1)
 
     while True:
+        stdscr.clear()
         current_core_offset = nv.nvmlDeviceGetGpcClkVfOffset(gpu)
         current_mem_offset = nv.nvmlDeviceGetMemClkVfOffset(gpu) / 2
         #  If the offset is negative, pynvml may return a value that is munged by truncated overflow
@@ -130,46 +131,92 @@ def draw_dashboard(stdscr):
             clock_color = set_color(current_clock_percentage, 70, 90)
             util_color = set_color(utilization.gpu, 70, 90)
             vram_color = set_color(current_vram_percentage, 70, 90)
-
+        header()
         stdscr.addstr(3, 0, "GPU: ")
         stdscr.addstr(4, 0, "Clock Frequency: ")
         stdscr.addstr(5, 0, "Temp: ")
         stdscr.addstr(6, 0, "Power: ")
         stdscr.addstr(7, 0, "Utilization: ")
         stdscr.addstr(8, 0, "VRAM Usage: ")
-        header()
         stdscr.addstr(3, 18, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
         stdscr.addstr(4, 18, f"{core_clock_str} / {mem_clock_str}", curses.color_pair(clock_color))
         stdscr.addstr(5, 18, f"{current_temperature}°C / Fan: {fan_speed}%", curses.color_pair(temp_color))
         stdscr.addstr(6, 18, f"{current_power_usage:.2f} / {current_power_limit:.2f} W ({power_offset_str} W)", curses.color_pair(power_color))
         stdscr.addstr(7, 18, f"Core: {utilization.gpu}% / Memory Controller: {utilization.memory}%", curses.color_pair(util_color))
         stdscr.addstr(8, 18, f"{mem_info.used / (1024**2):.2f} / {mem_info.total / (1024**2):.2f} MB", curses.color_pair(vram_color))
-
         stdscr.refresh()
         stdscr.timeout(args.refresh_rate)
         key = stdscr.getch()
         if key == ord("q"):
-            break
-        if args.interactive and key in [ord("h"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
+            nv.nvmlShutdown()
+            exit(1)
+        elif key == ord("h"):
             stdscr.nodelay(False)
-            if key == ord("h"):
+            stdscr.clear()
+            header()
+            stdscr.addstr(3, 0, "Legend:", curses.color_pair(6))
+            stdscr.addstr(5, 2, "h", curses.color_pair(4))
+            stdscr.addstr(6, 2, "c", curses.color_pair(4))
+            stdscr.addstr(7, 2, "m", curses.color_pair(4))
+            stdscr.addstr(8, 2, "p", curses.color_pair(4))
+            stdscr.addstr(9, 2, "f", curses.color_pair(4))
+            stdscr.addstr(10, 2, "a", curses.color_pair(4))
+            stdscr.addstr(11, 2, "i", curses.color_pair(4))
+            stdscr.addstr(5, 4, "- show this help screen.")
+            stdscr.addstr(6, 4, "- set new core clock offset")
+            stdscr.addstr(7, 4, "- set new mem clock offset")
+            stdscr.addstr(8, 4, "- set new power limit")
+            stdscr.addstr(9, 4, "- set manual fan percentage (CAUTION: This sets your fan control policy to manual meaning it WON'T adapt to temperature!)")
+            stdscr.addstr(10, 4, "- set fan control back to auto")
+            stdscr.addstr(11, 4, "- switch to process monitor with extra info")
+            stdscr.addstr(13, 0, "Press a key to return to the monitor!")
+            stdscr.refresh()
+            stdscr.getch()
+            stdscr.nodelay(True)
+        elif key == ord("i"):
+            while not key == 27:
                 stdscr.clear()
+                compute_version_major, compute_version_minor = nv.nvmlDeviceGetCudaComputeCapability(gpu)
+                bar_size = nv.nvmlDeviceGetBAR1MemoryInfo(gpu)
+                bar_size = str((bar_size.bar1Total / 1024) / 1024) + " MB"
+                link_gen = nv.nvmlDeviceGetCurrPcieLinkGeneration(gpu)
+                link_width = nv.nvmlDeviceGetCurrPcieLinkWidth(gpu)
+                max_gen = nv.nvmlDeviceGetMaxPcieLinkGeneration(gpu)
+                max_width = nv.nvmlDeviceGetMaxPcieLinkWidth(gpu)
+                mem_bus_width = nv.nvmlDeviceGetMemoryBusWidth(gpu)
+                compute_running_processes = nv.nvmlDeviceGetComputeRunningProcesses_v3(gpu)
+                for process in compute_running_processes:
+                    setattr(process, "type", "Compute")
+                graphics_running_processes = nv.nvmlDeviceGetGraphicsRunningProcesses_v3(gpu)
+                for process in graphics_running_processes:
+                    setattr(process, "type", "Graphics")
+                running_processes = graphics_running_processes + compute_running_processes
+                running_processes = sorted(running_processes, key=lambda x: x.usedGpuMemory, reverse=True)
                 header()
-                stdscr.addstr(3, 0, "Legend:", curses.color_pair(6))
-                stdscr.addstr(5, 2, "h", curses.color_pair(4))
-                stdscr.addstr(6, 2, "c", curses.color_pair(4))
-                stdscr.addstr(7, 2, "m", curses.color_pair(4))
-                stdscr.addstr(8, 2, "p", curses.color_pair(4))
-                stdscr.addstr(9, 2, "f", curses.color_pair(4))
-                stdscr.addstr(10, 2, "a", curses.color_pair(4))
-                stdscr.addstr(5, 4, "- show this help screen.")
-                stdscr.addstr(6, 4, "- set new core clock offset")
-                stdscr.addstr(7, 4, "- set new mem clock offset")
-                stdscr.addstr(8, 4, "- set new power limit")
-                stdscr.addstr(9, 4, "- set manual fan percentage (CAUTION: This sets your fan control policy to manual meaning it WON'T adapt to temperature!)")
-                stdscr.addstr(10, 4, "- set fan control back to auto")
-                stdscr.addstr(12, 0, "Press a key to return to the monitor!")
-                stdscr.getch()
+                stdscr.addstr(3, 0, "Extra info/Process Monitor:", curses.color_pair(6))
+                stdscr.addstr(5, 2, "Device Name: ", curses.color_pair(4))
+                stdscr.addstr(6, 2, "Compute Capability: ", curses.color_pair(4))
+                stdscr.addstr(7, 2, "BAR1 Size: ", curses.color_pair(4))
+                stdscr.addstr(8, 2, "PCI Express: ", curses.color_pair(4))
+                stdscr.addstr(9, 2, "Memory bus: ", curses.color_pair(4))
+                stdscr.addstr(10, 2, "Top Processes by VRAM: ", curses.color_pair(4))
+                stdscr.addstr(5, 26, f"{gpu_name}", curses.color_pair(1))
+                stdscr.addstr(6, 26, f"{compute_version_major}.{compute_version_minor}")
+                stdscr.addstr(7, 26, f"{bar_size}")
+                stdscr.addstr(8, 26, f"Gen {link_gen}@{link_width}x / Gen {max_gen}@{max_width}x")
+                stdscr.addstr(9, 26, f"{mem_bus_width} bit")
+                for i in range(0, 5):
+                    stdscr.addstr(12 + i, 4, f"{i + 1}", curses.color_pair(i + 1))
+                    stdscr.addstr(12 + i, 5, f" -   {psutil.Process(running_processes[i].pid).name()} -- ({running_processes[i].usedGpuMemory / 1024} MB) ({running_processes[i].type}) ")
+                stdscr.addstr(18, 0, "Press ESC key to return to the monitor or \"q\" to quit!")
+                stdscr.timeout(args.refresh_rate)
+                stdscr.refresh()
+                key = stdscr.getch()
+                if key == ord("q"):
+                    nv.nvmlShutdown()
+                    exit(1)
+        elif args.interactive and key in [ord("h"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
+            stdscr.nodelay(False)
             if key == ord("c"):
                 stdscr.addstr(10, 0, "Enter new core clock offset in Mhz:")
                 new_core_offset = stdscr.getstr(10, 36, 6)
@@ -232,10 +279,9 @@ def draw_dashboard(stdscr):
                         nv.nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
                 except nv.NVMLError as e:
                     stdscr.addstr(11, 0, f"Failed to set fan speed: {str(e)}")
-        stdscr.refresh()
-        time.sleep(1)
-        stdscr.nodelay(True)
-        stdscr.clear()
+            stdscr.refresh()
+            time.sleep(1)
+            stdscr.nodelay(True)
 
 
 # Execution begins here
@@ -300,5 +346,6 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
         print()
 else:
     import curses
+    import psutil
     curses.wrapper(draw_dashboard)
 nv.nvmlShutdown()
