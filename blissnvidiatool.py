@@ -189,16 +189,16 @@ def draw_dashboard(stdscr):
             stdscr.nodelay(True)
         elif key == ord("i"):
             key = ""
+            max_gen = nv.nvmlDeviceGetMaxPcieLinkGeneration(gpu)
+            max_width = nv.nvmlDeviceGetMaxPcieLinkWidth(gpu)
+            bar_size = nv.nvmlDeviceGetBAR1MemoryInfo(gpu)
+            bar_size = str((bar_size.bar1Total / 1024) / 1024) + " MB"
+            compute_version_major, compute_version_minor = nv.nvmlDeviceGetCudaComputeCapability(gpu)
+            mem_bus_width = nv.nvmlDeviceGetMemoryBusWidth(gpu)
             while not key == ord("i"):
                 stdscr.clear()
-                compute_version_major, compute_version_minor = nv.nvmlDeviceGetCudaComputeCapability(gpu)
-                bar_size = nv.nvmlDeviceGetBAR1MemoryInfo(gpu)
-                bar_size = str((bar_size.bar1Total / 1024) / 1024) + " MB"
                 link_gen = nv.nvmlDeviceGetCurrPcieLinkGeneration(gpu)
                 link_width = nv.nvmlDeviceGetCurrPcieLinkWidth(gpu)
-                max_gen = nv.nvmlDeviceGetMaxPcieLinkGeneration(gpu)
-                max_width = nv.nvmlDeviceGetMaxPcieLinkWidth(gpu)
-                mem_bus_width = nv.nvmlDeviceGetMemoryBusWidth(gpu)
                 compute_running_processes = nv.nvmlDeviceGetComputeRunningProcesses_v3(gpu)
                 for process in compute_running_processes:
                     setattr(process, "type", "Compute")
