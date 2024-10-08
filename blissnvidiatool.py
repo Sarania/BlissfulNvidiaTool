@@ -90,6 +90,7 @@ def draw_dashboard(stdscr):
     temp_color = 7
     power_color = 7
     clock_color = 7
+    mem_clock_color = 7
     util_color = 7
     vram_color = 7
     if args.interactive:
@@ -114,36 +115,45 @@ def draw_dashboard(stdscr):
         utilization = nv.nvmlDeviceGetUtilizationRates(gpu)
         mem_info = nv.nvmlDeviceGetMemoryInfo(gpu)
         core_clock = nv.nvmlDeviceGetClockInfo(gpu, nv.NVML_CLOCK_GRAPHICS)
-        core_clock_str = f"{core_clock} Mhz core ({core_offset_sign} Mhz)" if current_core_offset != 0 else f"{core_clock} Mhz core"
+        core_clock_str = f"{core_clock} Mhz ({core_offset_sign} Mhz)" if current_core_offset != 0 else f"{core_clock} Mhz"
         max_core_clock = nv.nvmlDeviceGetMaxClockInfo(gpu, nv.NVML_CLOCK_GRAPHICS)
+        max_mem_clock = nv.nvmlDeviceGetMaxClockInfo(gpu, nv.NVML_CLOCK_MEM)
         mem_clock = nv.nvmlDeviceGetClockInfo(gpu, nv.NVML_CLOCK_MEM)
-        mem_clock_str = f"{mem_clock} Mhz mem ({mem_offset_sign} Mhz)" if current_mem_offset != 0 else f"{mem_clock} Mhz mem"
+        mem_clock_str = f"{mem_clock} Mhz ({mem_offset_sign} Mhz)" if current_mem_offset != 0 else f"{mem_clock} Mhz"
         current_power_limit = nv.nvmlDeviceGetPowerManagementLimit(gpu) / 1000
         default_power_limit = nv.nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
         current_power_offset = current_power_limit - default_power_limit
         power_offset_str = add_sign(current_power_offset)
         current_power_percentage = (current_power_usage / current_power_limit) * 100
         current_clock_percentage = (core_clock / max_core_clock) * 100
+        current_mem_clock_percentage = (mem_clock / max_mem_clock) * 100
         current_vram_percentage = (mem_info.used / mem_info.total) * 100
         if args.reactive_color:
             temp_color = set_color(current_temperature, 65, 80)
             power_color = set_color(current_power_percentage, 70, 90)
             clock_color = set_color(current_clock_percentage, 70, 90)
+            mem_clock_color = set_color(current_mem_clock_percentage, 70, 90)
             util_color = set_color(utilization.gpu, 70, 90)
+            mem_util_color = set_color(utilization.memory, 70, 90)
             vram_color = set_color(current_vram_percentage, 70, 90)
         header()
-        stdscr.addstr(3, 0, "GPU: ")
-        stdscr.addstr(4, 0, "Clock Frequency: ")
-        stdscr.addstr(5, 0, "Temp: ")
-        stdscr.addstr(6, 0, "Power: ")
-        stdscr.addstr(7, 0, "Utilization: ")
-        stdscr.addstr(8, 0, "VRAM Usage: ")
-        stdscr.addstr(3, 18, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
-        stdscr.addstr(4, 18, f"{core_clock_str} / {mem_clock_str}", curses.color_pair(clock_color))
-        stdscr.addstr(5, 18, f"{current_temperature}°C / Fan: {fan_speed}%", curses.color_pair(temp_color))
-        stdscr.addstr(6, 18, f"{current_power_usage:.2f} / {current_power_limit:.2f} W ({power_offset_str} W)", curses.color_pair(power_color))
-        stdscr.addstr(7, 18, f"Core: {utilization.gpu}% / Memory Controller: {utilization.memory}%", curses.color_pair(util_color))
-        stdscr.addstr(8, 18, f"{mem_info.used / (1024**2):.2f} / {mem_info.total / (1024**2):.2f} MB", curses.color_pair(vram_color))
+        stdscr.addstr(3, 2, "GPU: ", curses.color_pair(4))
+        stdscr.addstr(4, 2, "Core Clock Freq: ", curses.color_pair(4))
+        stdscr.addstr(5, 2, "Mem Clock Freq: ", curses.color_pair(4))
+        stdscr.addstr(6, 2, "Temp/Fan: ", curses.color_pair(4))
+        stdscr.addstr(7, 2, "Power: ", curses.color_pair(4))
+        stdscr.addstr(8, 2, "VRAM Usage: ", curses.color_pair(4))
+        stdscr.addstr(9, 2, "Core Usage: ", curses.color_pair(4))
+        stdscr.addstr(10, 2, "Mem Controller: ", curses.color_pair(4))
+        stdscr.addstr(3, 22, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
+        stdscr.addstr(4, 22, f"{core_clock_str}", curses.color_pair(clock_color))
+        stdscr.addstr(5, 22, f"{mem_clock_str}", curses.color_pair(mem_clock_color))
+        stdscr.addstr(6, 22, f"{current_temperature}°C | {fan_speed}%", curses.color_pair(temp_color))
+        stdscr.addstr(7, 22, f"{current_power_usage:.2f} / {current_power_limit:.2f} W ({power_offset_str} W)", curses.color_pair(power_color))
+        stdscr.addstr(8, 22, f"{mem_info.used / (1024**2):.2f} / {mem_info.total / (1024**2):.2f} MB", curses.color_pair(vram_color))
+        stdscr.addstr(9, 22, f"{utilization.gpu}%", curses.color_pair(util_color))
+        stdscr.addstr(10, 22, f"{utilization.memory}%", curses.color_pair(mem_util_color))
+        stdscr.addstr(12, 2, "Press \"h\" for help or \"q\" to quit!")
         stdscr.refresh()
         stdscr.timeout(args.refresh_rate)
         key = stdscr.getch()
@@ -156,25 +166,29 @@ def draw_dashboard(stdscr):
             header()
             stdscr.addstr(3, 0, "Legend:", curses.color_pair(6))
             stdscr.addstr(5, 2, "h", curses.color_pair(4))
-            stdscr.addstr(6, 2, "c", curses.color_pair(4))
-            stdscr.addstr(7, 2, "m", curses.color_pair(4))
-            stdscr.addstr(8, 2, "p", curses.color_pair(4))
-            stdscr.addstr(9, 2, "f", curses.color_pair(4))
-            stdscr.addstr(10, 2, "a", curses.color_pair(4))
-            stdscr.addstr(11, 2, "i", curses.color_pair(4))
+            stdscr.addstr(6, 2, "i", curses.color_pair(4))
             stdscr.addstr(5, 4, "- show this help screen.")
-            stdscr.addstr(6, 4, "- set new core clock offset")
-            stdscr.addstr(7, 4, "- set new mem clock offset")
-            stdscr.addstr(8, 4, "- set new power limit")
-            stdscr.addstr(9, 4, "- set manual fan percentage (CAUTION: This sets your fan control policy to manual meaning it WON'T adapt to temperature!)")
-            stdscr.addstr(10, 4, "- set fan control back to auto")
-            stdscr.addstr(11, 4, "- switch to process monitor with extra info")
-            stdscr.addstr(13, 0, "Press a key to return to the monitor!")
+            stdscr.addstr(6, 4, "- switch to process monitor with extra info")
+            if args.interactive:
+                stdscr.addstr(7, 2, "c", curses.color_pair(4))
+                stdscr.addstr(8, 2, "m", curses.color_pair(4))
+                stdscr.addstr(9, 2, "p", curses.color_pair(4))
+                stdscr.addstr(10, 2, "f", curses.color_pair(4))
+                stdscr.addstr(11, 2, "a", curses.color_pair(4))
+                stdscr.addstr(7, 4, "- set new core clock offset")
+                stdscr.addstr(8, 4, "- set new mem clock offset")
+                stdscr.addstr(9, 4, "- set new power limit")
+                stdscr.addstr(10, 4, "- set manual fan percentage (CAUTION: This sets your fan control policy to manual meaning it WON'T adapt to temperature!)")
+                stdscr.addstr(11, 4, "- set fan control back to auto")
+                stdscr.addstr(13, 0, "Press a key to return to the monitor!")
+            else:
+                stdscr.addstr(8, 0, "Press a key to return to the monitor!")
             stdscr.refresh()
             stdscr.getch()
             stdscr.nodelay(True)
         elif key == ord("i"):
-            while not key == 27:
+            key = ""
+            while not key == ord("i"):
                 stdscr.clear()
                 compute_version_major, compute_version_minor = nv.nvmlDeviceGetCudaComputeCapability(gpu)
                 bar_size = nv.nvmlDeviceGetBAR1MemoryInfo(gpu)
@@ -208,7 +222,7 @@ def draw_dashboard(stdscr):
                 for i in range(0, 5):
                     stdscr.addstr(12 + i, 4, f"{i + 1}", curses.color_pair(i + 1))
                     stdscr.addstr(12 + i, 5, f" -   {psutil.Process(running_processes[i].pid).name()} -- ({running_processes[i].usedGpuMemory / 1024} MB) ({running_processes[i].type}) ")
-                stdscr.addstr(18, 0, "Press ESC key to return to the monitor or \"q\" to quit!")
+                stdscr.addstr(18, 0, "Press \"i\" key to return to the monitor or \"q\" to quit!")
                 stdscr.timeout(args.refresh_rate)
                 stdscr.refresh()
                 key = stdscr.getch()
