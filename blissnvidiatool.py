@@ -96,7 +96,8 @@ def draw_dashboard(stdscr):
     vram_color = 7
     if args.interactive:
         nv.nvmlDeviceSetPersistenceMode(gpu, 1)
-
+    gpu_name = nv.nvmlDeviceGetName(gpu)
+    default_power_limit = nv.nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
     while True:
         stdscr.clear()
         current_core_offset = nv.nvmlDeviceGetGpcClkVfOffset(gpu)
@@ -109,7 +110,7 @@ def draw_dashboard(stdscr):
             current_mem_offset = current_mem_offset - 4294966
         core_offset_sign = add_sign(current_core_offset)
         mem_offset_sign = add_sign(current_mem_offset)
-        gpu_name = nv.nvmlDeviceGetName(gpu)
+
         fan_speed = nv.nvmlDeviceGetFanSpeed(gpu)
         current_temperature = nv.nvmlDeviceGetTemperature(gpu, 0)
         current_power_usage = nv.nvmlDeviceGetPowerUsage(gpu) / 1000  # Convert mW to W
@@ -122,7 +123,6 @@ def draw_dashboard(stdscr):
         mem_clock = nv.nvmlDeviceGetClockInfo(gpu, nv.NVML_CLOCK_MEM)
         mem_clock_str = f"{mem_clock} Mhz ({mem_offset_sign} Mhz)" if current_mem_offset != 0 else f"{mem_clock} Mhz"
         current_power_limit = nv.nvmlDeviceGetPowerManagementLimit(gpu) / 1000
-        default_power_limit = nv.nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
         current_power_offset = current_power_limit - default_power_limit
         power_offset_str = add_sign(current_power_offset)
         current_power_percentage = (current_power_usage / current_power_limit) * 100
