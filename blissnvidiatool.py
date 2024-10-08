@@ -37,13 +37,13 @@ import pynvml as nv
 parser = argparse.ArgumentParser(description="Blissful Nvidia Tool")
 parser.add_argument("--gpu-number", type=int, default=0, help="Specify the GPU index (default: 0)")
 parser.add_argument("--refresh-rate", type=int, default=1000, help="Specify how often to refresh the monitor, in milliseconds. Default is 1000")
-parser.add_argument("--set-clocks", nargs=2, type=int, help="Set core and memory clock offsets (in MHz) respectively. Example: --set-clocks -150 500")
+parser.add_argument("--reactive-color", action='store_true', help="Uses color to indicate the intensity of values")
+parser.add_argument("--interactive", action='store_true', help="This and those below need root/superuser. Enable interactive mode for monitor. Type \"h\" for help")
+parser.add_argument("--set-clocks", nargs=2, type=int, help="Needs root. Set core and memory clock offsets (in MHz) respectively. Example: --set-clocks -150 500")
 parser.add_argument("--set-power-limit", type=int, help="Set the power limit (in watts). Example: --set-power-limit 300")
 parser.add_argument("--set-max-fan", action='store_true', help="Set all fans to maximum speed")
 parser.add_argument("--set-auto-fan", action='store_true', help="Reset fan control to automatic mode")
 parser.add_argument("--set-custom-fan", type=int, help="Set a custom fan percentage. !BE CAREFUL! as this changes the fan control policy to manual!!! Only values 30-100 are accepted. ")
-parser.add_argument("--reactive-color", action='store_true', help="Uses color to indicate the intensity of values")
-parser.add_argument("--interactive", action='store_true', help="Enable interactive mode for monitor. Type \"h\" for help")
 
 
 def draw_dashboard(stdscr):
@@ -91,6 +91,7 @@ def draw_dashboard(stdscr):
     power_color = 7
     clock_color = 7
     mem_clock_color = 7
+    mem_util_color = 7
     util_color = 7
     vram_color = 7
     if args.interactive:
@@ -232,67 +233,67 @@ def draw_dashboard(stdscr):
         elif args.interactive and key in [ord("h"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
             stdscr.nodelay(False)
             if key == ord("c"):
-                stdscr.addstr(10, 0, "Enter new core clock offset in Mhz:")
-                new_core_offset = stdscr.getstr(10, 36, 6)
+                stdscr.addstr(14, 0, "Enter new core clock offset in Mhz:")
+                new_core_offset = stdscr.getstr(14, 36, 6)
                 try:
                     new_core_offset = int(new_core_offset)
-                    stdscr.addstr(11, 0, f"Setting core clock offset to {new_core_offset} MHz...")
+                    stdscr.addstr(15, 0, f"Setting core clock offset to {new_core_offset} MHz...")
                     nv.nvmlDeviceSetGpcClkVfOffset(gpu, new_core_offset)
                 except ValueError:
-                    stdscr.addstr(11, 0, "Invalid input! Please enter a valid number.")
+                    stdscr.addstr(15, 0, "Invalid input! Please enter a valid number.")
                 except nv.NVMLError as e:
-                    stdscr.addstr(11, 0, f"Failed to set core clock offset: {str(e)}")
+                    stdscr.addstr(16, 0, f"Failed to set core clock offset: {str(e)}")
             elif key == ord("m"):
-                stdscr.addstr(10, 0, "Enter new mem clock offset in Mhz:")
-                new_mem_offset = stdscr.getstr(10, 35, 6)
+                stdscr.addstr(14, 0, "Enter new mem clock offset in Mhz:")
+                new_mem_offset = stdscr.getstr(14, 35, 6)
                 try:
                     new_mem_offset = int(new_mem_offset)
-                    stdscr.addstr(11, 0, f"Setting mem clock offset to {new_mem_offset} MHz...")
+                    stdscr.addstr(15, 0, f"Setting mem clock offset to {new_mem_offset} MHz...")
                     nv.nvmlDeviceSetMemClkVfOffset(gpu, new_mem_offset * 2)
                 except ValueError:
-                    stdscr.addstr(11, 0, "Invalid input! Please enter a valid number.")
+                    stdscr.addstr(15, 0, "Invalid input! Please enter a valid number.")
                 except nv.NVMLError as e:
-                    stdscr.addstr(11, 0, f"Failed to set mem clock offset: {str(e)}")
+                    stdscr.addstr(16, 0, f"Failed to set mem clock offset: {str(e)}")
             elif key == ord("p"):
-                stdscr.addstr(10, 0, "Enter new power limit in watts:")
-                new_power_limit = stdscr.getstr(10, 32, 6)
+                stdscr.addstr(14, 0, "Enter new power limit in watts:")
+                new_power_limit = stdscr.getstr(14, 32, 6)
                 try:
                     new_power_limit = int(new_power_limit)
-                    stdscr.addstr(11, 0, f"Setting power limit to {new_power_limit} W...")
+                    stdscr.addstr(15, 0, f"Setting power limit to {new_power_limit} W...")
                     nv.nvmlDeviceSetPowerManagementLimit(gpu, new_power_limit * 1000)
                 except ValueError:
-                    stdscr.addstr(11, 0, "Invalid input! Please enter a valid number.")
+                    stdscr.addstr(15, 0, "Invalid input! Please enter a valid number.")
                 except nv.NVMLError as e:
-                    stdscr.addstr(11, 0, f"Failed to set power limit: {str(e)}")
+                    stdscr.addstr(16, 0, f"Failed to set power limit: {str(e)}")
             elif key == ord("f"):
-                stdscr.addstr(10, 0, "Enter new fan percentage between 30 and 100:")
-                new_fan_speed = stdscr.getstr(10, 45, 6)
+                stdscr.addstr(14, 0, "Enter new fan percentage between 30 and 100:")
+                new_fan_speed = stdscr.getstr(14, 45, 6)
                 try:
                     new_fan_speed = int(new_fan_speed)
-                    stdscr.addstr(11, 0, f"Setting fan speed to {new_fan_speed}%...")
+                    stdscr.addstr(15, 0, f"Setting fan speed to {new_fan_speed}%...")
                     if 101 > new_fan_speed > 29:
                         num_fans = nv.nvmlDeviceGetNumFans(gpu)
                         for i in range(0, num_fans):
                             nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
                             nv.nvmlDeviceSetFanSpeed_v2(gpu, i, 70)
-                        stdscr.addstr(12, 0, "Fan control policy is now MANUAL... return it to AUTO with \"a\"", curses.color_pair(4))
+                        stdscr.addstr(16, 0, "Fan control policy is now MANUAL... return it to AUTO with \"a\"", curses.color_pair(4))
                         stdscr.refresh()
                         time.sleep(2)
                     else:
                         raise ValueError("Between 30 and 100!")
                 except ValueError:
-                    stdscr.addstr(11, 0, "Invalid input! Please enter a valid number.")
+                    stdscr.addstr(15, 0, "Invalid input! Please enter a valid number.")
                 except nv.NVMLError as e:
-                    stdscr.addstr(11, 0, f"Failed to set fan speed: {str(e)}")
+                    stdscr.addstr(15, 0, f"Failed to set fan speed: {str(e)}")
             elif key == ord("a"):
                 try:
-                    stdscr.addstr(10, 0, "Setting fans to automatic control...")
+                    stdscr.addstr(14, 0, "Setting fans to automatic control...")
                     num_fans = nv.nvmlDeviceGetNumFans(gpu)
                     for i in range(0, num_fans):
                         nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_TEMPERATURE_CONTINOUS_SW)
                         nv.nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
                 except nv.NVMLError as e:
-                    stdscr.addstr(11, 0, f"Failed to set fan speed: {str(e)}")
+                    stdscr.addstr(15, 0, f"Failed to set fan speed: {str(e)}")
             stdscr.refresh()
             time.sleep(1)
             stdscr.nodelay(True)
