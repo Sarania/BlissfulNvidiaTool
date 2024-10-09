@@ -133,10 +133,7 @@ def draw_dashboard(stdscr):
             file.write(str(int(current_power_limit)) + "\n")
             file.write(str(fan_policy.value) + "\n")
             file.write(str(fan_speed) + "\n")
-            for i in range(1, 5):
-                profile_exists[i] = False
-                if os.path.exists(os.path.join(source_dir, f"profile{i}.bnt")):
-                    profile_exists[i] = True
+        profile_exists[profile_number] = True
 
     def delete_profile(profile_number):
         """
@@ -146,12 +143,9 @@ def draw_dashboard(stdscr):
         if os.path.exists(profile_path):
             os.remove(profile_path)
             stdscr.addstr(14, 0, f"Deleted profile {profile_number}!")
+            profile_exists[profile_number] = False
         else:
             stdscr.addstr(14, 0, f"Nope, profile {profile_number} doesn't exist so we can't delete it, silly!")
-        for i in range(1, 5):
-            profile_exists[i] = False
-            if os.path.exists(os.path.join(source_dir, f"profile{i}.bnt")):
-                profile_exists[i] = True
 
     stdscr.clear()
     stdscr.nodelay(True)  # Non-blocking input
@@ -278,16 +272,20 @@ def draw_dashboard(stdscr):
                 stdscr.addstr(11, 2, "a", YELLOW)
                 stdscr.addstr(12, 2, "1", YELLOW)
                 stdscr.addstr(13, 2, "F1", YELLOW)
+                stdscr.addstr(14, 2, "!", YELLOW)
                 stdscr.addstr(7, 5, "- set new core clock offset")
                 stdscr.addstr(8, 5, "- set new mem clock offset")
                 stdscr.addstr(9, 5, "- set new power limit")
-                stdscr.addstr(10, 5, "- set manual fan percentage (CAUTION: This sets your fan control policy to manual meaning it WON'T adapt to temperature!)")
+                stdscr.addstr(10, 5, "- set manual fan percentage")
+                stdscr.addstr(10, 32, "(CAUTION: This sets your fan control policy to manual meaning it WON'T adapt to temperature!)", YELLOW)
                 stdscr.addstr(11, 5, "- set fan control back to auto")
                 stdscr.addstr(12, 5, "- load profile")
                 stdscr.addstr(12, 19, "(also 2, 3, 4)", YELLOW)
                 stdscr.addstr(13, 5, "- save profile")
                 stdscr.addstr(13, 19, "(also F2, F3, F4)", YELLOW)
-                stdscr.addstr(15, 0, "Press a key to return to the monitor!")
+                stdscr.addstr(14, 5, "- delete profile")
+                stdscr.addstr(14, 21, "(also @, #, $ e.g. SHIFT + profile number)", YELLOW)
+                stdscr.addstr(16, 0, "Press a key to return to the monitor!")
             else:
                 stdscr.addstr(8, 0, "Press a key to return to the monitor!")
             stdscr.refresh()
@@ -342,43 +340,52 @@ def draw_dashboard(stdscr):
                     nv.nvmlShutdown()
                     sys.exit(1)
         elif args.interactive and key in [curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4, ord("1"), ord("2"), ord("3"), ord("4"), ord("!"), ord("@"), ord("#"), ord("$"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
+            current_profile = active_profile
             active_profile = 0
             stdscr.nodelay(False)
             if key == ord("1"):
                 save_profile(1)
+                active_profile = 1
                 delay = 1
             elif key == curses.KEY_F1:
                 active_profile = load_profile(1)
                 delay = 2
             elif key == ord("!"):
                 delete_profile(1)
+                active_profile = current_profile if current_profile != 1 else 0
                 delay = 1
             elif key == ord("2"):
                 save_profile(2)
+                active_profile = 2
                 delay = 1
             elif key == curses.KEY_F2:
                 active_profile = load_profile(2)
                 delay = 2
             elif key == ord("@"):
                 delete_profile(2)
+                active_profile = current_profile if current_profile != 2 else 0
                 delay = 1
             elif key == ord("3"):
                 save_profile(3)
+                active_profile = 3
                 delay = 1
             elif key == curses.KEY_F3:
                 active_profile = load_profile(3)
                 delay = 2
             elif key == ord("#"):
                 delete_profile(3)
+                active_profile = current_profile if current_profile != 3 else 0
                 delay = 1
             elif key == ord("4"):
                 save_profile(4)
+                active_profile = 4
                 delay = 1
             elif key == curses.KEY_F4:
                 active_profile = load_profile(4)
                 delay = 2
             elif key == ord("$"):
                 delete_profile(4)
+                active_profile = current_profile if current_profile != 4 else 0
                 delay = 1
             elif key == ord("c"):
                 stdscr.addstr(14, 0, "Enter new core clock offset in Mhz:")
