@@ -337,7 +337,8 @@ def draw_dashboard(stdscr):
                     stdscr.addstr(14, 0, "Press \"i\" key to return to the monitor or \"q\" to quit!")
                 else:
                     for i in range(0, list_length):
-                        stdscr.addstr(12 + i, 4, f"{i + 1}", curses.color_pair(i + 1))
+                        number_color = curses.color_pair(i + 1) if USE_COLOR else WHITE
+                        stdscr.addstr(12 + i, 4, f"{i + 1}", number_color)
                         stdscr.addstr(12 + i, 5, f" -   {psutil.Process(running_processes[i].pid).name()} -- ({running_processes[i].usedGpuMemory / 1024} MB) ({running_processes[i].type}) ")
                         stdscr.addstr(13 + list_length, 0, "Press \"i\" key to return to the monitor or \"q\" to quit!")
                 stdscr.timeout(args.refresh_rate)
