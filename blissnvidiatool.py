@@ -315,6 +315,10 @@ def draw_dashboard(stdscr):
         elif key == ord("i"):
             key = ""
             try:
+                nvml_version = nv.nvmlSystemGetNVMLVersion()
+            except nv.NVMLError:
+                nvml_version = "Unknown"
+            try:
                 max_gen = nv.nvmlDeviceGetMaxPcieLinkGeneration(gpu)
                 max_width = nv.nvmlDeviceGetMaxPcieLinkWidth(gpu)
             except nv.NVMLError:
@@ -367,14 +371,14 @@ def draw_dashboard(stdscr):
                 header()
                 stdscr.addstr(3, 0, "Extra info/Process Monitor:", BLUE)
                 stdscr.addstr(5, 2, "Device Name:", YELLOW)
-                stdscr.addstr(6, 2, "Driver Version:", YELLOW)
+                stdscr.addstr(6, 2, "Driver/NVML Version:", YELLOW)
                 stdscr.addstr(7, 2, "Compute:", YELLOW)
                 stdscr.addstr(8, 2, "BAR1 Size:", YELLOW)
                 stdscr.addstr(9, 2, "PCI Express:", YELLOW)
                 stdscr.addstr(10, 2, "Memory bus:", YELLOW)
                 stdscr.addstr(11, 2, "Top Processes by VRAM:", YELLOW)
                 stdscr.addstr(5, 26, f"{gpu_name}", GREEN)
-                stdscr.addstr(6, 26, f"{driver_version}")
+                stdscr.addstr(6, 26, f"{driver_version} / {nvml_version}")
                 stdscr.addstr(7, 26, f"CC: {compute_version_major}.{compute_version_minor} | CUDA: {cuda_version_major}.{cuda_version_minor}")
                 stdscr.addstr(8, 26, f"{bar_size}")
                 stdscr.addstr(9, 26, f"Gen {link_gen}@{link_width}x / Gen {max_gen}@{max_width}x")
