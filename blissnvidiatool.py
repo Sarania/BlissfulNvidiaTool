@@ -288,10 +288,11 @@ def draw_dashboard(stdscr):
                 stdscr.addstr(7, 26, f"{bar_size}")
                 stdscr.addstr(8, 26, f"Gen {link_gen}@{link_width}x / Gen {max_gen}@{max_width}x")
                 stdscr.addstr(9, 26, f"{mem_bus_width} bit")
-                for i in range(0, min(5, len(running_processes))):
+                list_length = min(5, len(running_processes))
+                for i in range(0, list_length):
                     stdscr.addstr(12 + i, 4, f"{i + 1}", curses.color_pair(i + 1))
                     stdscr.addstr(12 + i, 5, f" -   {psutil.Process(running_processes[i].pid).name()} -- ({running_processes[i].usedGpuMemory / 1024} MB) ({running_processes[i].type}) ")
-                stdscr.addstr(18, 0, "Press \"i\" key to return to the monitor or \"q\" to quit!")
+                stdscr.addstr(12 + list_length, 0, "Press \"i\" key to return to the monitor or \"q\" to quit!")
                 stdscr.timeout(args.refresh_rate)
                 stdscr.refresh()
                 key = stdscr.getch()
