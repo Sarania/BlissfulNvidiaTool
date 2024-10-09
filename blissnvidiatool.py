@@ -152,30 +152,31 @@ def draw_dashboard(stdscr):
     stdscr.nodelay(True)  # Non-blocking input
     curses.curs_set(0)    # Hide cursor
     curses.echo()
-    if curses.has_colors() and USE_COLOR:
-        curses.start_color()
+    if curses.has_colors():
         curses.use_default_colors()
-        curses.init_pair(1, curses.COLOR_GREEN, -1)
-        GREEN = curses.color_pair(1)
-        curses.init_pair(2, curses.COLOR_RED, -1)
-        RED = curses.color_pair(2)
-        curses.init_pair(3, curses.COLOR_CYAN, -1)
-        CYAN = curses.color_pair(3)
-        curses.init_pair(4, curses.COLOR_YELLOW, -1)
-        YELLOW = curses.color_pair(4)
-        curses.init_pair(5, curses.COLOR_MAGENTA, -1)
-        MAGENTA = curses.color_pair(5)
-        curses.init_pair(6, curses.COLOR_BLUE, -1)
-        BLUE = curses.color_pair(6)
-        curses.init_pair(7, curses.COLOR_WHITE, -1)
-        WHITE = curses.color_pair(7)
-        try:  # Try to initalize an 8th color pair but fall back for limited color environment
-            curses.init_pair(8, 8, -1)
-            GRAY = curses.color_pair(8)
-        except ValueError:
-            GRAY = CYAN
-    else:
-        GRAY = CYAN = RED = GREEN = BLUE = YELLOW = MAGENTA = WHITE = curses.A_NORMAL
+        if USE_COLOR:
+            curses.start_color()
+            curses.init_pair(1, curses.COLOR_GREEN, -1)
+            GREEN = curses.color_pair(1)
+            curses.init_pair(2, curses.COLOR_RED, -1)
+            RED = curses.color_pair(2)
+            curses.init_pair(3, curses.COLOR_CYAN, -1)
+            CYAN = curses.color_pair(3)
+            curses.init_pair(4, curses.COLOR_YELLOW, -1)
+            YELLOW = curses.color_pair(4)
+            curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+            MAGENTA = curses.color_pair(5)
+            curses.init_pair(6, curses.COLOR_BLUE, -1)
+            BLUE = curses.color_pair(6)
+            curses.init_pair(7, curses.COLOR_WHITE, -1)
+            WHITE = curses.color_pair(7)
+            try:  # Try to initalize an 8th color pair but fall back for limited color environment
+                curses.init_pair(8, 8, -1)
+                GRAY = curses.color_pair(8)
+            except ValueError:
+                GRAY = CYAN
+        else:
+            GRAY = CYAN = RED = GREEN = BLUE = YELLOW = MAGENTA = WHITE = curses.A_NORMAL
     temp_color = WHITE
     power_color = WHITE
     clock_color = WHITE
