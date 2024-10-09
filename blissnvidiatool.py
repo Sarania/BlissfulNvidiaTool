@@ -47,6 +47,7 @@ parser.add_argument("--set-max-fan", action='store_true', help="Set all fans to 
 parser.add_argument("--set-auto-fan", action='store_true', help="Reset fan control to automatic mode")
 parser.add_argument("--set-custom-fan", type=int, help="Set a custom fan percentage. !BE CAREFUL! as this changes the fan control policy to manual!!! Only values 30-100 are accepted. ")
 parser.add_argument("--set-profile", type=int, help="Apply on of the custom profiles you've created.")
+parser.add_argument("--no-color", action='store_true', help="Disable the use of any color at all")
 
 
 def add_sign(offset):
@@ -150,28 +151,31 @@ def draw_dashboard(stdscr):
     stdscr.clear()
     stdscr.nodelay(True)  # Non-blocking input
     curses.curs_set(0)    # Hide cursor
-    curses.start_color()
     curses.echo()
-    curses.use_default_colors()
-    curses.init_pair(1, curses.COLOR_GREEN, -1)
-    GREEN = curses.color_pair(1)
-    curses.init_pair(2, curses.COLOR_RED, -1)
-    RED = curses.color_pair(2)
-    curses.init_pair(3, curses.COLOR_CYAN, -1)
-    CYAN = curses.color_pair(3)
-    curses.init_pair(4, curses.COLOR_YELLOW, -1)
-    YELLOW = curses.color_pair(4)
-    curses.init_pair(5, curses.COLOR_MAGENTA, -1)
-    MAGENTA = curses.color_pair(5)
-    curses.init_pair(6, curses.COLOR_BLUE, -1)
-    BLUE = curses.color_pair(6)
-    curses.init_pair(7, curses.COLOR_WHITE, -1)
-    WHITE = curses.color_pair(7)
-    try:
-        curses.init_pair(8, 8, -1)
-        GRAY = curses.color_pair(8)
-    except ValueError:
-        GRAY = CYAN
+    if curses.has_colors() and USE_COLOR:
+        curses.start_color()
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_GREEN, -1)
+        GREEN = curses.color_pair(1)
+        curses.init_pair(2, curses.COLOR_RED, -1)
+        RED = curses.color_pair(2)
+        curses.init_pair(3, curses.COLOR_CYAN, -1)
+        CYAN = curses.color_pair(3)
+        curses.init_pair(4, curses.COLOR_YELLOW, -1)
+        YELLOW = curses.color_pair(4)
+        curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+        MAGENTA = curses.color_pair(5)
+        curses.init_pair(6, curses.COLOR_BLUE, -1)
+        BLUE = curses.color_pair(6)
+        curses.init_pair(7, curses.COLOR_WHITE, -1)
+        WHITE = curses.color_pair(7)
+        try:  # Try to initalize an 8th color pair but fall back for limited color environment
+            curses.init_pair(8, 8, -1)
+            GRAY = curses.color_pair(8)
+        except ValueError:
+            GRAY = CYAN
+    else:
+        GRAY = CYAN = RED = GREEN = BLUE = YELLOW = MAGENTA = WHITE = curses.A_NORMAL
     temp_color = WHITE
     power_color = WHITE
     clock_color = WHITE
@@ -474,15 +478,16 @@ try:
 except nv.NVMLError as e:
     print(f"Could not initialize NVML! The library reported: {e}")
     sys.exit(8)
+USE_COLOR = not args.no_color and (os.getenv("TERM") != "dumb" and os.getenv("TERM") is not None)
+ANSI_WARN = "\033[0;33;40m" if USE_COLOR else ""
+ANSI_YELLOW = "\033[0;33m" if USE_COLOR else ""
+ANSI_MAGENTA = "\033[0;35m" if USE_COLOR else ""
+ANSI_GREEN = "\033[0;32m" if USE_COLOR else ""
+NC = "\033[0m" if USE_COLOR else ""
 gpu = nv.nvmlDeviceGetHandleByIndex(args.gpu_number)
 
 # If this check is true we run in offline mode, else we run in online mode
 if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_fan or args.set_custom_fan or args.set_profile:
-    ANSI_WARN = "\033[0;33;40m"
-    ANSI_YELLOW = "\033[0;33m"
-    ANSI_MAGENTA = "\033[0;35m"
-    ANSI_GREEN = "\033[0;32m"
-    NC = "\033[0m"
     print(f"{ANSI_MAGENTA}Blissful Nvidia Tool Offline Mode{NC}")
     print("_________________________________________")
     print(f"{ANSI_YELLOW}User accepts ALL risks of overclocking/altering power limits/fan settings!{NC}")
