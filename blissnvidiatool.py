@@ -149,7 +149,6 @@ def draw_dashboard(stdscr):
             stdscr.addstr(14, 0, f"Nope, profile {profile_number} doesn't exist so we can't delete it, silly!")
 
     stdscr.clear()
-    stdscr.nodelay(True)  # Non-blocking input
     curses.curs_set(0)    # Hide cursor
     curses.echo()
     if curses.has_colors():
@@ -188,12 +187,21 @@ def draw_dashboard(stdscr):
     active_profile = 0
     profile_exists = [False, False, False, False, False]  # We create this with an extra phantom element at position 0 to make the code easier to maintain, we only use 1-4
     if args.interactive:
-        nv.nvmlDeviceSetPersistenceMode(gpu, 1)
+        try:
+            nv.nvmlDeviceSetPersistenceMode(gpu, 1)
+        except nv.NVMLError as e:
+            stdscr.addstr(1, 2, f"Unable to set driver to persistent for interactive mode: {e}")
+            for i in range(0, 4):
+                stdscr.addstr(2, 2, f"Shutting down in {4 - i}s...")
+                stdscr.refresh()
+                time.sleep(1)
+            sys.exit()
         for i in range(1, 5):
             if os.path.exists(os.path.join(source_dir, f"profile{i}.bnt")):
                 profile_exists[i] = True
     gpu_name = nv.nvmlDeviceGetName(gpu)
     default_power_limit = nv.nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
+    stdscr.nodelay(True)
     while True:
         stdscr.clear()
         current_core_offset = nv.nvmlDeviceGetGpcClkVfOffset(gpu)
@@ -490,7 +498,11 @@ ANSI_YELLOW = "\033[0;33m" if USE_COLOR else ""
 ANSI_MAGENTA = "\033[0;35m" if USE_COLOR else ""
 ANSI_GREEN = "\033[0;32m" if USE_COLOR else ""
 NC = "\033[0m" if USE_COLOR else ""
-gpu = nv.nvmlDeviceGetHandleByIndex(args.gpu_number)
+try:
+    gpu = nv.nvmlDeviceGetHandleByIndex(args.gpu_number)
+except nv.NVMLError as e:
+    print(f"Could not initialize for GPU {args.gpu_number}! The library reported: {e}")
+    sys.exit(8)
 
 # If this check is true we run in offline mode, else we run in online mode
 if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_fan or args.set_custom_fan or args.set_profile:
