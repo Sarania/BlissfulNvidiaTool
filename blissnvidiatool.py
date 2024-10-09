@@ -71,8 +71,60 @@ def draw_dashboard(stdscr):
         """
         Simple function to show the header
         """
-        stdscr.addstr(0, 0, "                    Blissful Nvidia Tool", curses.color_pair(5))
+        stdscr.addstr(0, 0, "                    Blissful Nvidia Tool", MAGENTA)
         stdscr.addstr(1, 0, "------------------------------------------------------------")
+
+    def load_profile(profile_number):
+        """
+        Loads a profile and applies settings. Takes in which profile to load
+        """
+        stdscr.addstr(14, 0, f"Loading profile {profile_number}!")
+        try:
+            with open(f"profile{profile_number}.bnt", "r", encoding="utf-8") as file:
+                new_core_offset = int(file.readline())
+                new_mem_offset = int(file.readline())
+                new_power_limit = int(file.readline())
+                new_fan_policy = int(file.readline())
+                new_fan_speed = int(file.readline())
+                stdscr.addstr(15, 0, f"Setting core clock offset to {add_sign(new_core_offset)} Mhz...")
+                nv.nvmlDeviceSetGpcClkVfOffset(gpu, new_core_offset)
+                stdscr.addstr(16, 0, f"Setting mem clock offset to {add_sign(new_mem_offset)} Mhz...")
+                nv.nvmlDeviceSetMemClkVfOffset(gpu, new_mem_offset * 2)
+                stdscr.addstr(17, 0, f"Setting core power limit to {new_power_limit}...")
+                nv.nvmlDeviceSetPowerManagementLimit(gpu, new_power_limit * 1000)
+                if new_fan_policy == 1:
+                    if 101 > new_fan_speed > 29:
+                        stdscr.addstr(18, 0, f"Setting fan policy to manual and fan speed to {fan_speed}%...")
+                        num_fans = nv.nvmlDeviceGetNumFans(gpu)
+                        for i in range(0, num_fans):
+                            nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
+                            nv.nvmlDeviceSetFanSpeed_v2(gpu, i, new_fan_speed)
+                    else:
+                        raise ValueError("Invalid fan speed setting in profile!")
+                else:
+                    stdscr.addstr(18, 0, "Setting fan policy to automatic control...")
+                    num_fans = nv.nvmlDeviceGetNumFans(gpu)
+                    for i in range(0, num_fans):
+                        nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_TEMPERATURE_CONTINOUS_SW)
+                        nv.nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
+        except ValueError as e:
+            stdscr.addstr(15, 0, f"Some kind of value error prevented the profile loading: {e}")
+        except nv.NVMLError as e:
+            stdscr.addstr(15, 0, f"Some kind of NVML error prevented the profile loading: {e}")
+        except FileNotFoundError:
+            stdscr.addstr(15, 0, "Profile was not found!")
+
+    def save_profile(profile_number):
+        """
+        Saves current settings to the specified profile number.
+        """
+        stdscr.addstr(14, 0, f"Current settings will be saved as profile {profile_number}!")
+        with open(f"profile{profile_number}.bnt", "w", encoding="utf-8") as file:
+            file.write(str(int(current_core_offset)) + "\n")
+            file.write(str(int(current_mem_offset)) + "\n")
+            file.write(str(int(current_power_limit)) + "\n")
+            file.write(str(fan_policy.value) + "\n")
+            file.write(str(fan_speed) + "\n")
 
     stdscr.clear()
     stdscr.nodelay(True)  # Non-blocking input
@@ -81,19 +133,27 @@ def draw_dashboard(stdscr):
     curses.echo()
     curses.use_default_colors()
     curses.init_pair(1, curses.COLOR_GREEN, -1)
+    GREEN = curses.color_pair(1)
     curses.init_pair(2, curses.COLOR_RED, -1)
+    RED = curses.color_pair(2)
     curses.init_pair(3, curses.COLOR_CYAN, -1)
+    CYAN = curses.color_pair(3)
     curses.init_pair(4, curses.COLOR_YELLOW, -1)
+    YELLOW = curses.color_pair(4)
     curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+    MAGENTA = curses.color_pair(5)
     curses.init_pair(6, curses.COLOR_BLUE, -1)
+    BLUE = curses.color_pair(6)
     curses.init_pair(7, curses.COLOR_WHITE, -1)
-    temp_color = 7
-    power_color = 7
-    clock_color = 7
-    mem_clock_color = 7
-    mem_util_color = 7
-    util_color = 7
-    vram_color = 7
+    WHITE = curses.color_pair(7)
+    temp_color = WHITE
+    power_color = WHITE
+    clock_color = WHITE
+    mem_clock_color = WHITE
+    mem_util_color = WHITE
+    util_color = WHITE
+    vram_color = WHITE
+    delay = 0
     if args.interactive:
         nv.nvmlDeviceSetPersistenceMode(gpu, 1)
     gpu_name = nv.nvmlDeviceGetName(gpu)
@@ -110,7 +170,9 @@ def draw_dashboard(stdscr):
             current_mem_offset = current_mem_offset - 4294966
         core_offset_sign = add_sign(current_core_offset)
         mem_offset_sign = add_sign(current_mem_offset)
-
+        fan_policy = ctypes.c_uint()
+        nv.nvmlDeviceGetFanControlPolicy_v2(gpu, 0, ctypes.byref(fan_policy))
+        fan_policy_str = "Manual" if fan_policy.value == 1 else "Auto"
         fan_speed = nv.nvmlDeviceGetFanSpeed(gpu)
         current_temperature = nv.nvmlDeviceGetTemperature(gpu, 0)
         current_power_usage = nv.nvmlDeviceGetPowerUsage(gpu) / 1000  # Convert mW to W
@@ -138,18 +200,18 @@ def draw_dashboard(stdscr):
             mem_util_color = set_color(utilization.memory, 70, 90)
             vram_color = set_color(current_vram_percentage, 70, 90)
         header()
-        stdscr.addstr(3, 2, "GPU: ", curses.color_pair(4))
-        stdscr.addstr(4, 2, "Core Clock Freq: ", curses.color_pair(4))
-        stdscr.addstr(5, 2, "Mem Clock Freq: ", curses.color_pair(4))
-        stdscr.addstr(6, 2, "Temp/Fan: ", curses.color_pair(4))
-        stdscr.addstr(7, 2, "Power: ", curses.color_pair(4))
-        stdscr.addstr(8, 2, "VRAM Usage: ", curses.color_pair(4))
-        stdscr.addstr(9, 2, "Core Usage: ", curses.color_pair(4))
-        stdscr.addstr(10, 2, "Mem Controller: ", curses.color_pair(4))
-        stdscr.addstr(3, 22, f"{args.gpu_number} - {gpu_name}", curses.color_pair(1))
+        stdscr.addstr(3, 2, "GPU: ", YELLOW)
+        stdscr.addstr(4, 2, "Core Clock Freq: ", YELLOW)
+        stdscr.addstr(5, 2, "Mem Clock Freq: ", YELLOW)
+        stdscr.addstr(6, 2, "Temp/Fan: ", YELLOW)
+        stdscr.addstr(7, 2, "Power: ", YELLOW)
+        stdscr.addstr(8, 2, "VRAM Usage: ", YELLOW)
+        stdscr.addstr(9, 2, "Core Usage: ", YELLOW)
+        stdscr.addstr(10, 2, "Mem Controller: ", YELLOW)
+        stdscr.addstr(3, 22, f"{args.gpu_number} - {gpu_name}", GREEN)
         stdscr.addstr(4, 22, f"{core_clock_str}", curses.color_pair(clock_color))
         stdscr.addstr(5, 22, f"{mem_clock_str}", curses.color_pair(mem_clock_color))
-        stdscr.addstr(6, 22, f"{current_temperature}°C | {fan_speed}%", curses.color_pair(temp_color))
+        stdscr.addstr(6, 22, f"{current_temperature}°C | {fan_speed}% ({fan_policy_str})", curses.color_pair(temp_color))
         stdscr.addstr(7, 22, f"{current_power_usage:.2f} / {current_power_limit:.2f} W ({power_offset_str} W)", curses.color_pair(power_color))
         stdscr.addstr(8, 22, f"{mem_info.used / (1024**2):.2f} / {mem_info.total / (1024**2):.2f} MB", curses.color_pair(vram_color))
         stdscr.addstr(9, 22, f"{utilization.gpu}%", curses.color_pair(util_color))
@@ -165,23 +227,29 @@ def draw_dashboard(stdscr):
             stdscr.nodelay(False)
             stdscr.clear()
             header()
-            stdscr.addstr(3, 0, "Legend:", curses.color_pair(6))
-            stdscr.addstr(5, 2, "h", curses.color_pair(4))
-            stdscr.addstr(6, 2, "i", curses.color_pair(4))
-            stdscr.addstr(5, 4, "- show this help screen.")
-            stdscr.addstr(6, 4, "- switch to process monitor with extra info")
+            stdscr.addstr(3, 0, "Blissful Legend:", BLUE)
+            stdscr.addstr(5, 2, "h", YELLOW)
+            stdscr.addstr(6, 2, "i", YELLOW)
+            stdscr.addstr(5, 5, "- show this help screen.")
+            stdscr.addstr(6, 5, "- switch to process monitor with extra info")
             if args.interactive:
-                stdscr.addstr(7, 2, "c", curses.color_pair(4))
-                stdscr.addstr(8, 2, "m", curses.color_pair(4))
-                stdscr.addstr(9, 2, "p", curses.color_pair(4))
-                stdscr.addstr(10, 2, "f", curses.color_pair(4))
-                stdscr.addstr(11, 2, "a", curses.color_pair(4))
-                stdscr.addstr(7, 4, "- set new core clock offset")
-                stdscr.addstr(8, 4, "- set new mem clock offset")
-                stdscr.addstr(9, 4, "- set new power limit")
-                stdscr.addstr(10, 4, "- set manual fan percentage (CAUTION: This sets your fan control policy to manual meaning it WON'T adapt to temperature!)")
-                stdscr.addstr(11, 4, "- set fan control back to auto")
-                stdscr.addstr(13, 0, "Press a key to return to the monitor!")
+                stdscr.addstr(7, 2, "c", YELLOW)
+                stdscr.addstr(8, 2, "m", YELLOW)
+                stdscr.addstr(9, 2, "p", YELLOW)
+                stdscr.addstr(10, 2, "f", YELLOW)
+                stdscr.addstr(11, 2, "a", YELLOW)
+                stdscr.addstr(12, 2, "1", YELLOW)
+                stdscr.addstr(13, 2, "F1", YELLOW)
+                stdscr.addstr(7, 5, "- set new core clock offset")
+                stdscr.addstr(8, 5, "- set new mem clock offset")
+                stdscr.addstr(9, 5, "- set new power limit")
+                stdscr.addstr(10, 5, "- set manual fan percentage (CAUTION: This sets your fan control policy to manual meaning it WON'T adapt to temperature!)")
+                stdscr.addstr(11, 5, "- set fan control back to auto")
+                stdscr.addstr(12, 5, "- load profile")
+                stdscr.addstr(12, 19, "(also 2, 3, 4)", YELLOW)
+                stdscr.addstr(13, 5, "- save profile")
+                stdscr.addstr(13, 19, "(also F2, F3, F4)", YELLOW)
+                stdscr.addstr(15, 0, "Press a key to return to the monitor!")
             else:
                 stdscr.addstr(8, 0, "Press a key to return to the monitor!")
             stdscr.refresh()
@@ -208,14 +276,14 @@ def draw_dashboard(stdscr):
                 running_processes = graphics_running_processes + compute_running_processes
                 running_processes = sorted(running_processes, key=lambda x: x.usedGpuMemory, reverse=True)
                 header()
-                stdscr.addstr(3, 0, "Extra info/Process Monitor:", curses.color_pair(6))
-                stdscr.addstr(5, 2, "Device Name: ", curses.color_pair(4))
-                stdscr.addstr(6, 2, "Compute Capability: ", curses.color_pair(4))
-                stdscr.addstr(7, 2, "BAR1 Size: ", curses.color_pair(4))
-                stdscr.addstr(8, 2, "PCI Express: ", curses.color_pair(4))
-                stdscr.addstr(9, 2, "Memory bus: ", curses.color_pair(4))
-                stdscr.addstr(10, 2, "Top Processes by VRAM: ", curses.color_pair(4))
-                stdscr.addstr(5, 26, f"{gpu_name}", curses.color_pair(1))
+                stdscr.addstr(3, 0, "Extra info/Process Monitor:", BLUE)
+                stdscr.addstr(5, 2, "Device Name: ", YELLOW)
+                stdscr.addstr(6, 2, "Compute Capability: ", YELLOW)
+                stdscr.addstr(7, 2, "BAR1 Size: ", YELLOW)
+                stdscr.addstr(8, 2, "PCI Express: ", YELLOW)
+                stdscr.addstr(9, 2, "Memory bus: ", YELLOW)
+                stdscr.addstr(10, 2, "Top Processes by VRAM: ", YELLOW)
+                stdscr.addstr(5, 26, f"{gpu_name}", GREEN)
                 stdscr.addstr(6, 26, f"{compute_version_major}.{compute_version_minor}")
                 stdscr.addstr(7, 26, f"{bar_size}")
                 stdscr.addstr(8, 26, f"Gen {link_gen}@{link_width}x / Gen {max_gen}@{max_width}x")
@@ -230,9 +298,29 @@ def draw_dashboard(stdscr):
                 if key == ord("q"):
                     nv.nvmlShutdown()
                     exit(1)
-        elif args.interactive and key in [ord("h"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
+        elif args.interactive and key in [curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4, ord("1"), ord("2"), ord("3"), ord("4"), ord("h"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
             stdscr.nodelay(False)
-            if key == ord("c"):
+            if key == ord("1"):
+                save_profile(1)
+            elif key == curses.KEY_F1:
+                load_profile(1)
+                delay = 2
+            elif key == ord("2"):
+                save_profile(2)
+            elif key == curses.KEY_F2:
+                load_profile(2)
+                delay = 2
+            elif key == ord("3"):
+                save_profile(3)
+            elif key == curses.KEY_F3:
+                load_profile(3)
+                delay = 2
+            elif key == ord("4"):
+                save_profile(4)
+            elif key == curses.KEY_F4:
+                load_profile(4)
+                delay = 3
+            elif key == ord("c"):
                 stdscr.addstr(14, 0, "Enter new core clock offset in Mhz:")
                 new_core_offset = stdscr.getstr(14, 36, 6)
                 try:
@@ -241,8 +329,10 @@ def draw_dashboard(stdscr):
                     nv.nvmlDeviceSetGpcClkVfOffset(gpu, new_core_offset)
                 except ValueError:
                     stdscr.addstr(15, 0, "Invalid input! Please enter a valid number.")
+                    delay = 2
                 except nv.NVMLError as e:
                     stdscr.addstr(16, 0, f"Failed to set core clock offset: {str(e)}")
+                    delay = 2
             elif key == ord("m"):
                 stdscr.addstr(14, 0, "Enter new mem clock offset in Mhz:")
                 new_mem_offset = stdscr.getstr(14, 35, 6)
@@ -252,8 +342,10 @@ def draw_dashboard(stdscr):
                     nv.nvmlDeviceSetMemClkVfOffset(gpu, new_mem_offset * 2)
                 except ValueError:
                     stdscr.addstr(15, 0, "Invalid input! Please enter a valid number.")
+                    delay = 2
                 except nv.NVMLError as e:
                     stdscr.addstr(16, 0, f"Failed to set mem clock offset: {str(e)}")
+                    delay = 2
             elif key == ord("p"):
                 stdscr.addstr(14, 0, "Enter new power limit in watts:")
                 new_power_limit = stdscr.getstr(14, 32, 6)
@@ -263,8 +355,10 @@ def draw_dashboard(stdscr):
                     nv.nvmlDeviceSetPowerManagementLimit(gpu, new_power_limit * 1000)
                 except ValueError:
                     stdscr.addstr(15, 0, "Invalid input! Please enter a valid number.")
+                    delay = 2
                 except nv.NVMLError as e:
                     stdscr.addstr(16, 0, f"Failed to set power limit: {str(e)}")
+                    delay = 2
             elif key == ord("f"):
                 stdscr.addstr(14, 0, "Enter new fan percentage between 30 and 100:")
                 new_fan_speed = stdscr.getstr(14, 45, 6)
@@ -275,16 +369,17 @@ def draw_dashboard(stdscr):
                         num_fans = nv.nvmlDeviceGetNumFans(gpu)
                         for i in range(0, num_fans):
                             nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
-                            nv.nvmlDeviceSetFanSpeed_v2(gpu, i, 70)
-                        stdscr.addstr(16, 0, "Fan control policy is now MANUAL... return it to AUTO with \"a\"", curses.color_pair(4))
-                        stdscr.refresh()
-                        time.sleep(2)
+                            nv.nvmlDeviceSetFanSpeed_v2(gpu, i, new_fan_speed)
+                        stdscr.addstr(16, 0, "Fan control policy is now MANUAL... return it to AUTO with \"a\"", YELLOW)
+                        delay = 2
                     else:
                         raise ValueError("Between 30 and 100!")
                 except ValueError:
                     stdscr.addstr(15, 0, "Invalid input! Please enter a valid number.")
+                    delay = 2
                 except nv.NVMLError as e:
                     stdscr.addstr(15, 0, f"Failed to set fan speed: {str(e)}")
+                    delay = 2
             elif key == ord("a"):
                 try:
                     stdscr.addstr(14, 0, "Setting fans to automatic control...")
@@ -294,8 +389,10 @@ def draw_dashboard(stdscr):
                         nv.nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
                 except nv.NVMLError as e:
                     stdscr.addstr(15, 0, f"Failed to set fan speed: {str(e)}")
+                    delay = 2
             stdscr.refresh()
-            time.sleep(1)
+            time.sleep(1 + delay)
+            delay = 0
             stdscr.nodelay(True)
 
 
@@ -360,6 +457,7 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
         print(f"Power limit set to {args.set_power_limit} W!")
         print()
 else:
+    import ctypes
     import curses
     import psutil
     curses.wrapper(draw_dashboard)
