@@ -31,6 +31,7 @@ Created on: Tue Oct 1, 2024
 =================================================
 """
 __VERSION__ = "1.20"
+import os
 import time
 import argparse
 import pynvml as nv
@@ -44,6 +45,14 @@ parser.add_argument("--set-power-limit", type=int, help="Set the power limit (in
 parser.add_argument("--set-max-fan", action='store_true', help="Set all fans to maximum speed")
 parser.add_argument("--set-auto-fan", action='store_true', help="Reset fan control to automatic mode")
 parser.add_argument("--set-custom-fan", type=int, help="Set a custom fan percentage. !BE CAREFUL! as this changes the fan control policy to manual!!! Only values 30-100 are accepted. ")
+parser.add_argument("--set-profile", type=int, help="Apply on of the custom profiles you've created.")
+
+
+def add_sign(offset):
+    """
+    Helper function to add a + sign to positive numbers and output them back
+    """
+    return f"+{offset}" if offset > 0 else offset
 
 
 def draw_dashboard(stdscr):
@@ -60,12 +69,6 @@ def draw_dashboard(stdscr):
             return 2
         else:
             return 1
-
-    def add_sign(offset):
-        """
-        Helper function to add a + sign to positive numbers and output them back
-        """
-        return f"+{offset}" if offset > 0 else offset
 
     def header():
         """
@@ -94,7 +97,7 @@ def draw_dashboard(stdscr):
                 nv.nvmlDeviceSetPowerManagementLimit(gpu, new_power_limit * 1000)
                 if new_fan_policy == 1:
                     if 101 > new_fan_speed > 29:
-                        stdscr.addstr(18, 0, f"Setting fan policy to manual and fan speed to {fan_speed}%...")
+                        stdscr.addstr(18, 0, f"Setting fan policy to manual and fan speed to {new_fan_speed}%...")
                         num_fans = nv.nvmlDeviceGetNumFans(gpu)
                         for i in range(0, num_fans):
                             nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
@@ -125,7 +128,6 @@ def draw_dashboard(stdscr):
             file.write(str(int(current_power_limit)) + "\n")
             file.write(str(fan_policy.value) + "\n")
             file.write(str(fan_speed) + "\n")
-    source_dir = os.path.dirname(os.path.abspath(__file__))
     stdscr.clear()
     stdscr.nodelay(True)  # Non-blocking input
     curses.curs_set(0)    # Hide cursor
@@ -402,11 +404,12 @@ def draw_dashboard(stdscr):
 
 
 # Execution begins here
+source_dir = os.path.dirname(os.path.abspath(__file__))
 args = parser.parse_args()
 nv.nvmlInit()
 gpu = nv.nvmlDeviceGetHandleByIndex(args.gpu_number)
 
-if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_fan or args.set_custom_fan:
+if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_fan or args.set_custom_fan or args.set_profile:
     print("Blissful Nvidia Tool Non-interactive Mode")
     print("_________________________________________")
     print("User accepts ALL risks of overclocking/altering power limits/fan settings!")
@@ -461,8 +464,45 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
         nv.nvmlDeviceSetPowerManagementLimit(gpu, args.set_power_limit * 1000)
         print(f"Power limit set to {args.set_power_limit} W!")
         print()
+    if args.set_profile:
+        profile_number = args.set_profile
+        print(f"Loading profile {profile_number}!")
+        try:
+            with open(os.path.join(source_dir, f"profile{profile_number}.bnt"), "r", encoding="utf-8") as file:
+                new_core_offset = int(file.readline())
+                new_mem_offset = int(file.readline())
+                new_power_limit = int(file.readline())
+                new_fan_policy = int(file.readline())
+                new_fan_speed = int(file.readline())
+                print(f"Setting core clock offset to {add_sign(new_core_offset)} Mhz...")
+                nv.nvmlDeviceSetGpcClkVfOffset(gpu, new_core_offset)
+                print(f"Setting mem clock offset to {add_sign(new_mem_offset)} Mhz...")
+                nv.nvmlDeviceSetMemClkVfOffset(gpu, new_mem_offset * 2)
+                print(f"Setting core power limit to {new_power_limit}...")
+                nv.nvmlDeviceSetPowerManagementLimit(gpu, new_power_limit * 1000)
+                if new_fan_policy == 1:
+                    if 101 > new_fan_speed > 29:
+                        print(f"Setting fan policy to manual and fan speed to {new_fan_speed}%...")
+                        num_fans = nv.nvmlDeviceGetNumFans(gpu)
+                        for i in range(0, num_fans):
+                            nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
+                            nv.nvmlDeviceSetFanSpeed_v2(gpu, i, new_fan_speed)
+                    else:
+                        raise ValueError("Invalid fan speed setting in profile!")
+                else:
+                    print("Setting fan policy to automatic control...")
+                    num_fans = nv.nvmlDeviceGetNumFans(gpu)
+                    for i in range(0, num_fans):
+                        nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_TEMPERATURE_CONTINOUS_SW)
+                        nv.nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
+        except ValueError as e:
+            print(f"Some kind of value error prevented the profile loading: {e}")
+        except nv.NVMLError as e:
+            print(f"Some kind of NVML error prevented the profile loading: {e}")
+        except FileNotFoundError:
+            print("Profile was not found!")
 else:
-    import os
+    #  Interactive mode
     import ctypes
     import curses
     import psutil
