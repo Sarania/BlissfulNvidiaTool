@@ -32,6 +32,7 @@ Created on: Tue Oct 1, 2024
 """
 __VERSION__ = "1.20"
 import os
+import sys
 import time
 import argparse
 import pynvml as nv
@@ -259,7 +260,7 @@ def draw_dashboard(stdscr):
         key = stdscr.getch()
         if key == ord("q"):
             nv.nvmlShutdown()
-            exit(1)
+            sys.exit(1)
         elif key == ord("h"):
             stdscr.nodelay(False)
             stdscr.clear()
@@ -339,7 +340,7 @@ def draw_dashboard(stdscr):
                 key = stdscr.getch()
                 if key == ord("q"):
                     nv.nvmlShutdown()
-                    exit(1)
+                    sys.exit(1)
         elif args.interactive and key in [curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4, ord("1"), ord("2"), ord("3"), ord("4"), ord("!"), ord("@"), ord("#"), ord("$"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
             active_profile = 0
             stdscr.nodelay(False)
@@ -458,7 +459,11 @@ def draw_dashboard(stdscr):
 # Execution begins here
 source_dir = os.path.dirname(os.path.abspath(__file__))
 args = parser.parse_args()
-nv.nvmlInit()
+try:
+    nv.nvmlInit()
+except nv.NVMLError as e:
+    print(f"Could not initialize NVML! The library reported: {e}")
+    sys.exit(8)
 gpu = nv.nvmlDeviceGetHandleByIndex(args.gpu_number)
 
 # If this check is true we run in offline mode, else we run in online mode
@@ -466,28 +471,37 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
     print("Blissful Nvidia Tool Offline Mode")
     print("_________________________________________")
     print("User accepts ALL risks of overclocking/altering power limits/fan settings!")
-    print("Additionally, root permission is needed for these changes and the script will fail without it!")
+    print("Additionally, root permission is needed for these changes and they will fail to apply without it.")
     print()
     print("Enabling persistence...")
+    try:
+        nv.nvmlDeviceSetPersistenceMode(gpu, 1)
+    except nv.NVMLError as e:
+        print(f"Some kind of NVML error prevented applying the requested change: {e}")
     print()
-    nv.nvmlDeviceSetPersistenceMode(gpu, 1)
     if args.set_max_fan:
         num_fans = nv.nvmlDeviceGetNumFans(gpu)
         print(f"Found {num_fans} fans!")
         print("Attempting to set fans to max speed...")
         for i in range(0, num_fans):
-            nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
-            nv.nvmlDeviceSetFanSpeed_v2(gpu, i, 100)
-        print("Fans set to max speed!")
+            try:
+                nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
+                nv.nvmlDeviceSetFanSpeed_v2(gpu, i, 100)
+                print(f"Fan {i} set to max speed!")
+            except nv.NVMLError as e:
+                print(f"Some kind of NVML error prevented applying the requested change: {e}")
         print()
     elif args.set_auto_fan:
         num_fans = nv.nvmlDeviceGetNumFans(gpu)
         print(f"Found {num_fans} fans!")
         print("Attempting to restore fans to automatic control...")
         for i in range(0, num_fans):
-            nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_TEMPERATURE_CONTINOUS_SW)
-            nv.nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
-        print("Fans restored to automatic control!")
+            try:
+                nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_TEMPERATURE_CONTINOUS_SW)
+                nv.nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
+                print(f"Fan {i} restored to automatic control!")
+            except nv.NVMLError as e:
+                print(f"Some kind of NVML error prevented applying the requested change: {e}")
         print()
     elif args.set_custom_fan:
         new_speed = args.set_custom_fan
@@ -496,9 +510,12 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
             print(f"Found {num_fans} fans!")
             print(f"Attempting to set fans to {new_speed}%...")
             for i in range(0, num_fans):
-                nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
-                nv.nvmlDeviceSetFanSpeed_v2(gpu, i, new_speed)
-            print(f"Fans set to {new_speed}%! Please monitor your temps as fan control policy is now MANUAL!")
+                try:
+                    nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_MANUAL)
+                    nv.nvmlDeviceSetFanSpeed_v2(gpu, i, new_speed)
+                    print(f"Fan {i} set to {new_speed}%! Fan control policy is now MANUAL!")
+                except nv.NVMLError as e:
+                    print(f"Some kind of NVML error prevented applying the requested change: {e}")
             print()
         elif new_speed > 100:
             print(f"Value {new_speed} invalid for fan control!")
@@ -508,14 +525,20 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
     if args.set_clocks:
         core_offset, mem_offset = args.set_clocks
         print(f"Attempting to set core clock offset to {core_offset} MHz and memory clock offset to {mem_offset} MHz...")
-        nv.nvmlDeviceSetGpcClkVfOffset(gpu, core_offset)
-        nv.nvmlDeviceSetMemClkVfOffset(gpu, mem_offset * 2)  # Multiply memoffset by 2 so it's equivalent to offset in GWE and Windows
-        print(f"Set core clock offset to {core_offset} MHz and memory clock offset to {mem_offset} MHz!")
+        try:
+            nv.nvmlDeviceSetGpcClkVfOffset(gpu, core_offset)
+            nv.nvmlDeviceSetMemClkVfOffset(gpu, mem_offset * 2)  # Multiply memoffset by 2 so it's equivalent to offset in GWE and Windows
+            print(f"Set core clock offset to {core_offset} MHz and memory clock offset to {mem_offset} MHz!")
+        except nv.NVMLError as e:
+            print(f"Some kind of NVML error prevented applying the requested change: {e}")
         print()
     if args.set_power_limit:
         print(f"Attempting to set power limit to {args.set_power_limit} W...")
-        nv.nvmlDeviceSetPowerManagementLimit(gpu, args.set_power_limit * 1000)
-        print(f"Power limit set to {args.set_power_limit} W!")
+        try:
+            nv.nvmlDeviceSetPowerManagementLimit(gpu, args.set_power_limit * 1000)
+            print(f"Power limit set to {args.set_power_limit} W!")
+        except nv.NVMLError as e:
+            print(f"Some kind of NVML error prevented applying the requested change: {e}")
         print()
     if args.set_profile:
         profile_number = args.set_profile
