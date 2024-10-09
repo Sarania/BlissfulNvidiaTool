@@ -80,7 +80,7 @@ def draw_dashboard(stdscr):
         """
         stdscr.addstr(14, 0, f"Loading profile {profile_number}!")
         try:
-            with open(f"profile{profile_number}.bnt", "r", encoding="utf-8") as file:
+            with open(os.path.join(source_dir, f"profile{profile_number}.bnt"), "r", encoding="utf-8") as file:
                 new_core_offset = int(file.readline())
                 new_mem_offset = int(file.readline())
                 new_power_limit = int(file.readline())
@@ -119,13 +119,13 @@ def draw_dashboard(stdscr):
         Saves current settings to the specified profile number.
         """
         stdscr.addstr(14, 0, f"Current settings will be saved as profile {profile_number}!")
-        with open(f"profile{profile_number}.bnt", "w", encoding="utf-8") as file:
+        with open(os.path.join(source_dir, f"profile{profile_number}.bnt"), "w", encoding="utf-8") as file:
             file.write(str(int(current_core_offset)) + "\n")
             file.write(str(int(current_mem_offset)) + "\n")
             file.write(str(int(current_power_limit)) + "\n")
             file.write(str(fan_policy.value) + "\n")
             file.write(str(fan_speed) + "\n")
-
+    source_dir = os.path.dirname(os.path.abspath(__file__))
     stdscr.clear()
     stdscr.nodelay(True)  # Non-blocking input
     curses.curs_set(0)    # Hide cursor
@@ -457,6 +457,7 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
         print(f"Power limit set to {args.set_power_limit} W!")
         print()
 else:
+    import os
     import ctypes
     import curses
     import psutil
