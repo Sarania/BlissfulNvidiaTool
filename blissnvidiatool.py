@@ -238,8 +238,12 @@ def draw_dashboard(stdscr):
         header()
         if args.interactive:
             for i in range(1, 5):
-                profile_color = YELLOW if active_profile == i else BLUE if profile_exists[i] else GRAY
-                stdscr.addstr(2, 23 + (4 * (i - 1)), f"{i}", profile_color)
+                if USE_COLOR:
+                    profile_color = YELLOW if active_profile == i else BLUE if profile_exists[i] else GRAY
+                else:
+                    profile_color = curses.A_BOLD if active_profile == i else curses.A_NORMAL if profile_exists[i] else None
+                if profile_color is not None:
+                    stdscr.addstr(2, 23 + (4 * (i - 1)), f"{i}", profile_color)
         stdscr.addstr(3, 2, "GPU: ", YELLOW)
         stdscr.addstr(4, 2, "Core Clock Freq: ", YELLOW)
         stdscr.addstr(5, 2, "Mem Clock Freq: ", YELLOW)
