@@ -30,7 +30,7 @@ Created on: Tue Oct 1, 2024
 @author: Blyss Sarania
 =================================================
 """
-__VERSION__ = "1.20"
+__VERSION__ = "1.30"
 import os
 import sys
 import time
