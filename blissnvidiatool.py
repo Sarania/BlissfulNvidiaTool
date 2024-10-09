@@ -110,12 +110,16 @@ def draw_dashboard(stdscr):
                     for i in range(0, num_fans):
                         nv.nvmlDeviceSetFanControlPolicy(gpu, i, nv.NVML_FAN_POLICY_TEMPERATURE_CONTINOUS_SW)
                         nv.nvmlDeviceSetDefaultFanSpeed_v2(gpu, i)
+            return profile_number
         except ValueError as e:
             stdscr.addstr(15, 0, f"Some kind of value error prevented the profile loading: {e}")
+            return 66
         except nv.NVMLError as e:
             stdscr.addstr(15, 0, f"Some kind of NVML error prevented the profile loading: {e}")
+            return 66
         except FileNotFoundError:
             stdscr.addstr(15, 0, "Profile was not found!")
+            return 66
 
     def save_profile(profile_number):
         """
@@ -128,6 +132,26 @@ def draw_dashboard(stdscr):
             file.write(str(int(current_power_limit)) + "\n")
             file.write(str(fan_policy.value) + "\n")
             file.write(str(fan_speed) + "\n")
+            for i in range(1, 5):
+                profile_exists[i] = False
+                if os.path.exists(os.path.join(source_dir, f"profile{i}.bnt")):
+                    profile_exists[i] = True
+
+    def delete_profile(profile_number):
+        """
+        Simply deletes the specified profile
+        """
+        profile_path = os.path.join(source_dir, f"profile{profile_number}.bnt")
+        if os.path.exists(profile_path):
+            os.remove(profile_path)
+            stdscr.addstr(14, 0, f"Deleted profile {profile_number}!")
+        else:
+            stdscr.addstr(14, 0, f"Nope, profile {profile_number} doesn't exist so we can't delete it, silly!")
+        for i in range(1, 5):
+            profile_exists[i] = False
+            if os.path.exists(os.path.join(source_dir, f"profile{i}.bnt")):
+                profile_exists[i] = True
+
     stdscr.clear()
     stdscr.nodelay(True)  # Non-blocking input
     curses.curs_set(0)    # Hide cursor
@@ -148,6 +172,8 @@ def draw_dashboard(stdscr):
     BLUE = curses.color_pair(6)
     curses.init_pair(7, curses.COLOR_WHITE, -1)
     WHITE = curses.color_pair(7)
+    curses.init_pair(8, 8, -1)
+    GRAY = curses.color_pair(8)
     temp_color = WHITE
     power_color = WHITE
     clock_color = WHITE
@@ -156,8 +182,13 @@ def draw_dashboard(stdscr):
     util_color = WHITE
     vram_color = WHITE
     delay = 0
+    active_profile = 0
+    profile_exists = [False, False, False, False, False]  # We create this with an extra phantom element at position 0 to make the code easier to maintain, we only use 1-4
     if args.interactive:
         nv.nvmlDeviceSetPersistenceMode(gpu, 1)
+        for i in range(1, 5):
+            if os.path.exists(os.path.join(source_dir, f"profile{i}.bnt")):
+                profile_exists[i] = True
     gpu_name = nv.nvmlDeviceGetName(gpu)
     default_power_limit = nv.nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
     while True:
@@ -202,6 +233,10 @@ def draw_dashboard(stdscr):
             mem_util_color = set_color(utilization.memory, 70, 90)
             vram_color = set_color(current_vram_percentage, 70, 90)
         header()
+        if args.interactive:
+            for i in range(1, 5):
+                profile_color = YELLOW if active_profile == i else BLUE if profile_exists[i] else GRAY
+                stdscr.addstr(2, 23 + (4 * (i - 1)), f"{i}", profile_color)
         stdscr.addstr(3, 2, "GPU: ", YELLOW)
         stdscr.addstr(4, 2, "Core Clock Freq: ", YELLOW)
         stdscr.addstr(5, 2, "Mem Clock Freq: ", YELLOW)
@@ -305,28 +340,45 @@ def draw_dashboard(stdscr):
                 if key == ord("q"):
                     nv.nvmlShutdown()
                     exit(1)
-        elif args.interactive and key in [curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4, ord("1"), ord("2"), ord("3"), ord("4"), ord("h"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
+        elif args.interactive and key in [curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4, ord("1"), ord("2"), ord("3"), ord("4"), ord("!"), ord("@"), ord("#"), ord("$"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
+            active_profile = 0
             stdscr.nodelay(False)
             if key == ord("1"):
                 save_profile(1)
+                delay = 1
             elif key == curses.KEY_F1:
-                load_profile(1)
+                active_profile = load_profile(1)
                 delay = 2
+            elif key == ord("!"):
+                delete_profile(1)
+                delay = 1
             elif key == ord("2"):
                 save_profile(2)
+                delay = 1
             elif key == curses.KEY_F2:
-                load_profile(2)
+                active_profile = load_profile(2)
                 delay = 2
+            elif key == ord("@"):
+                delete_profile(2)
+                delay = 1
             elif key == ord("3"):
                 save_profile(3)
+                delay = 1
             elif key == curses.KEY_F3:
-                load_profile(3)
+                active_profile = load_profile(3)
                 delay = 2
+            elif key == ord("#"):
+                delete_profile(3)
+                delay = 1
             elif key == ord("4"):
                 save_profile(4)
+                delay = 1
             elif key == curses.KEY_F4:
-                load_profile(4)
-                delay = 3
+                active_profile = load_profile(4)
+                delay = 2
+            elif key == ord("$"):
+                delete_profile(4)
+                delay = 1
             elif key == ord("c"):
                 stdscr.addstr(14, 0, "Enter new core clock offset in Mhz:")
                 new_core_offset = stdscr.getstr(14, 36, 6)
