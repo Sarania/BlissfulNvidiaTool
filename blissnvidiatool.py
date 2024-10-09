@@ -167,8 +167,11 @@ def draw_dashboard(stdscr):
     BLUE = curses.color_pair(6)
     curses.init_pair(7, curses.COLOR_WHITE, -1)
     WHITE = curses.color_pair(7)
-    curses.init_pair(8, 8, -1)
-    GRAY = curses.color_pair(8)
+    try:
+        curses.init_pair(8, 8, -1)
+        GRAY = curses.color_pair(8)
+    except ValueError:
+        GRAY = CYAN
     temp_color = WHITE
     power_color = WHITE
     clock_color = WHITE
