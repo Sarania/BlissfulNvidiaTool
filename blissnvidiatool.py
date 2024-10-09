@@ -313,47 +313,81 @@ def draw_dashboard(stdscr):
             stdscr.nodelay(True)
         elif key == ord("i"):
             key = ""
-            max_gen = nv.nvmlDeviceGetMaxPcieLinkGeneration(gpu)
-            max_width = nv.nvmlDeviceGetMaxPcieLinkWidth(gpu)
-            bar_size = nv.nvmlDeviceGetBAR1MemoryInfo(gpu)
-            bar_size = str((bar_size.bar1Total / 1024) / 1024) + " MB"
-            compute_version_major, compute_version_minor = nv.nvmlDeviceGetCudaComputeCapability(gpu)
-            mem_bus_width = nv.nvmlDeviceGetMemoryBusWidth(gpu)
+            try:
+                max_gen = nv.nvmlDeviceGetMaxPcieLinkGeneration(gpu)
+                max_width = nv.nvmlDeviceGetMaxPcieLinkWidth(gpu)
+            except nv.NVMLError:
+                max_gen = "?"
+                max_width = "?"
+            try:
+                bar_size = nv.nvmlDeviceGetBAR1MemoryInfo(gpu)
+                bar_size = str((bar_size.bar1Total / 1024) / 1024) + " MB"
+            except nv.NVMLError:
+                bar_size = "Unknown"
+            try:
+                compute_version_major, compute_version_minor = nv.nvmlDeviceGetCudaComputeCapability(gpu)
+            except nv.NVMLError:
+                compute_version_major = "?"
+                compute_version_minor = "?"
+            try:
+                cuda_version = nv.nvmlSystemGetCudaDriverVersion_v2()
+                cuda_version_major = cuda_version // 1000
+                cuda_version_minor = (cuda_version % 1000) // 10
+            except nv.NVMLError:
+                cuda_version_major = "?"
+                cuda_version_minor = "?"
+            try:
+                driver_version = nv.nvmlSystemGetDriverVersion()
+            except nv.NVMLError:
+                driver_version = "Unknown"
+            try:
+                mem_bus_width = nv.nvmlDeviceGetMemoryBusWidth(gpu)
+            except nv.NVMLError:
+                mem_bus_width = "Unknown"
             while not key == ord("i"):
                 stdscr.clear()
-                link_gen = nv.nvmlDeviceGetCurrPcieLinkGeneration(gpu)
-                link_width = nv.nvmlDeviceGetCurrPcieLinkWidth(gpu)
-                compute_running_processes = nv.nvmlDeviceGetComputeRunningProcesses_v3(gpu)
-                for process in compute_running_processes:
-                    setattr(process, "type", "Compute")
-                graphics_running_processes = nv.nvmlDeviceGetGraphicsRunningProcesses_v3(gpu)
-                for process in graphics_running_processes:
-                    setattr(process, "type", "Graphics")
-                running_processes = graphics_running_processes + compute_running_processes
-                running_processes = sorted(running_processes, key=lambda x: x.usedGpuMemory, reverse=True)
+                try:
+                    link_gen = nv.nvmlDeviceGetCurrPcieLinkGeneration(gpu)
+                    link_width = nv.nvmlDeviceGetCurrPcieLinkWidth(gpu)
+                except nv.NVMLError:
+                    link_gen = "?"
+                    link_width = "?"
+                try:
+                    compute_running_processes = nv.nvmlDeviceGetComputeRunningProcesses_v3(gpu)
+                    for process in compute_running_processes:
+                        setattr(process, "type", "Compute")
+                    graphics_running_processes = nv.nvmlDeviceGetGraphicsRunningProcesses_v3(gpu)
+                    for process in graphics_running_processes:
+                        setattr(process, "type", "Graphics")
+                    running_processes = graphics_running_processes + compute_running_processes
+                    running_processes = sorted(running_processes, key=lambda x: x.usedGpuMemory, reverse=True)
+                except nv.NVMLError:
+                    running_processes = ["Unknown"]
                 header()
                 stdscr.addstr(3, 0, "Extra info/Process Monitor:", BLUE)
-                stdscr.addstr(5, 2, "Device Name: ", YELLOW)
-                stdscr.addstr(6, 2, "Compute Capability: ", YELLOW)
-                stdscr.addstr(7, 2, "BAR1 Size: ", YELLOW)
-                stdscr.addstr(8, 2, "PCI Express: ", YELLOW)
-                stdscr.addstr(9, 2, "Memory bus: ", YELLOW)
-                stdscr.addstr(10, 2, "Top Processes by VRAM: ", YELLOW)
+                stdscr.addstr(5, 2, "Device Name:", YELLOW)
+                stdscr.addstr(6, 2, "Driver Version:", YELLOW)
+                stdscr.addstr(7, 2, "Compute:", YELLOW)
+                stdscr.addstr(8, 2, "BAR1 Size:", YELLOW)
+                stdscr.addstr(9, 2, "PCI Express:", YELLOW)
+                stdscr.addstr(10, 2, "Memory bus:", YELLOW)
+                stdscr.addstr(11, 2, "Top Processes by VRAM:", YELLOW)
                 stdscr.addstr(5, 26, f"{gpu_name}", GREEN)
-                stdscr.addstr(6, 26, f"{compute_version_major}.{compute_version_minor}")
-                stdscr.addstr(7, 26, f"{bar_size}")
-                stdscr.addstr(8, 26, f"Gen {link_gen}@{link_width}x / Gen {max_gen}@{max_width}x")
-                stdscr.addstr(9, 26, f"{mem_bus_width} bit")
+                stdscr.addstr(6, 26, f"{driver_version}")
+                stdscr.addstr(7, 26, f"CC: {compute_version_major}.{compute_version_minor} | CUDA: {cuda_version_major}.{cuda_version_minor}")
+                stdscr.addstr(8, 26, f"{bar_size}")
+                stdscr.addstr(9, 26, f"Gen {link_gen}@{link_width}x / Gen {max_gen}@{max_width}x")
+                stdscr.addstr(10, 26, f"{mem_bus_width} bit")
                 list_length = min(5, len(running_processes))
                 if list_length == 0:
-                    stdscr.addstr(12, 4, "0 -   None")
-                    stdscr.addstr(14, 0, "Press \"i\" key to return to the monitor or \"q\" to quit!")
+                    stdscr.addstr(13, 4, "0 -   None")
+                    stdscr.addstr(15, 0, "Press \"i\" key to return to the monitor or \"q\" to quit!")
                 else:
                     for i in range(0, list_length):
                         number_color = curses.color_pair(i + 1) if USE_COLOR else WHITE
-                        stdscr.addstr(12 + i, 4, f"{i + 1}", number_color)
-                        stdscr.addstr(12 + i, 5, f" -   {psutil.Process(running_processes[i].pid).name()} -- ({running_processes[i].usedGpuMemory / 1024} MB) ({running_processes[i].type}) ")
-                        stdscr.addstr(13 + list_length, 0, "Press \"i\" key to return to the monitor or \"q\" to quit!")
+                        stdscr.addstr(13 + i, 4, f"{i + 1}", number_color)
+                        stdscr.addstr(13 + i, 5, f" -   {psutil.Process(running_processes[i].pid).name()} -- ({running_processes[i].usedGpuMemory / 1024} MB) ({running_processes[i].type}) ")
+                        stdscr.addstr(15 + list_length, 0, "Press \"i\" key to return to the monitor or \"q\" to quit!")
                 stdscr.timeout(args.refresh_rate)
                 stdscr.refresh()
                 key = stdscr.getch()
