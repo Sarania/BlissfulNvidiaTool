@@ -30,7 +30,7 @@ Created on: Tue Oct 1, 2024
 @author: Blyss Sarania
 =================================================
 """
-__VERSION__ = "1.00"
+__VERSION__ = "1.20"
 import time
 import argparse
 import pynvml as nv
