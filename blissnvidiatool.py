@@ -64,11 +64,11 @@ def draw_dashboard(stdscr):
         Helper function to return color values based on current readings, takes in the value and thresholds to check
         """
         if threshold_caution < value < threshold_warn:
-            return 4
+            return RED
         elif value > threshold_warn:
-            return 2
+            return YELLOW
         else:
-            return 1
+            return GREEN
 
     def header():
         """
@@ -211,13 +211,13 @@ def draw_dashboard(stdscr):
         stdscr.addstr(9, 2, "Core Usage: ", YELLOW)
         stdscr.addstr(10, 2, "Mem Controller: ", YELLOW)
         stdscr.addstr(3, 22, f"{args.gpu_number} - {gpu_name}", GREEN)
-        stdscr.addstr(4, 22, f"{core_clock_str}", curses.color_pair(clock_color))
-        stdscr.addstr(5, 22, f"{mem_clock_str}", curses.color_pair(mem_clock_color))
-        stdscr.addstr(6, 22, f"{current_temperature}°C | {fan_speed}% ({fan_policy_str})", curses.color_pair(temp_color))
-        stdscr.addstr(7, 22, f"{current_power_usage:.2f} / {current_power_limit:.2f} W ({power_offset_str} W)", curses.color_pair(power_color))
-        stdscr.addstr(8, 22, f"{mem_info.used / (1024**2):.2f} / {mem_info.total / (1024**2):.2f} MB", curses.color_pair(vram_color))
-        stdscr.addstr(9, 22, f"{utilization.gpu}%", curses.color_pair(util_color))
-        stdscr.addstr(10, 22, f"{utilization.memory}%", curses.color_pair(mem_util_color))
+        stdscr.addstr(4, 22, f"{core_clock_str}", clock_color)
+        stdscr.addstr(5, 22, f"{mem_clock_str}", mem_clock_color)
+        stdscr.addstr(6, 22, f"{current_temperature}°C | {fan_speed}% ({fan_policy_str})", temp_color)
+        stdscr.addstr(7, 22, f"{current_power_usage:.2f} / {current_power_limit:.2f} W ({power_offset_str} W)", power_color)
+        stdscr.addstr(8, 22, f"{mem_info.used / (1024**2):.2f} / {mem_info.total / (1024**2):.2f} MB", vram_color)
+        stdscr.addstr(9, 22, f"{utilization.gpu}%", util_color)
+        stdscr.addstr(10, 22, f"{utilization.memory}%", mem_util_color)
         stdscr.addstr(12, 2, "Press \"h\" for help or \"q\" to quit!")
         stdscr.refresh()
         stdscr.timeout(args.refresh_rate)
@@ -409,8 +409,9 @@ args = parser.parse_args()
 nv.nvmlInit()
 gpu = nv.nvmlDeviceGetHandleByIndex(args.gpu_number)
 
+# If this check is true we run in offline mode, else we run in online mode
 if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_fan or args.set_custom_fan or args.set_profile:
-    print("Blissful Nvidia Tool Non-interactive Mode")
+    print("Blissful Nvidia Tool Offline Mode")
     print("_________________________________________")
     print("User accepts ALL risks of overclocking/altering power limits/fan settings!")
     print("Additionally, root permission is needed for these changes and the script will fail without it!")
