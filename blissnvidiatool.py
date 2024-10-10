@@ -66,9 +66,9 @@ def draw_dashboard(stdscr):
         Helper function to return color values based on current readings, takes in the value and thresholds to check
         """
         if threshold_caution < value < threshold_warn:
-            return RED
-        elif value > threshold_warn:
             return YELLOW
+        elif value > threshold_warn:
+            return RED
         else:
             return GREEN
 
