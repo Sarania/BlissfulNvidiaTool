@@ -175,7 +175,8 @@ def draw_dashboard(stdscr):
             except ValueError:
                 GRAY = CYAN
         else:
-            GRAY = CYAN = RED = GREEN = BLUE = YELLOW = MAGENTA = WHITE = curses.A_NORMAL
+            GRAY = CYAN = RED = GREEN = WHITE = curses.A_NORMAL
+            YELLOW = BLUE = MAGENTA = curses.A_BOLD
     temp_color = WHITE
     power_color = WHITE
     clock_color = WHITE
