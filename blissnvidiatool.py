@@ -6,7 +6,7 @@ Description:
 Simple CLI tool for monitoring and overclocking Nvidia Graphics Cards
 
 Dependencies:
-nvidia-ml-py - NOT pynvml which is the older, deprecated version and does not have the needed functionality for all features.
+nvidia-ml-py > 11.5 for all features. pynvml /may/ also work.
 Nvidia Driver 555.xx or greater for all features.
 
 License:
@@ -40,14 +40,14 @@ parser = argparse.ArgumentParser(description="Blissful Nvidia Tool")
 parser.add_argument("--gpu-number", type=int, default=0, help="Specify the GPU index (default: 0)")
 parser.add_argument("--refresh-rate", type=int, default=1000, help="Specify how often to refresh the monitor, in milliseconds. Default is 1000")
 parser.add_argument("--reactive-color", action='store_true', help="Uses color to indicate the intensity of values")
+parser.add_argument("--no-color", action='store_true', help="Disable the use of any color at all")
 parser.add_argument("--interactive", action='store_true', help="This and those below need root/superuser. Enable interactive mode for monitor. Type \"h\" for help")
 parser.add_argument("--set-clocks", nargs=2, type=int, help="Needs root. Set core and memory clock offsets (in MHz) respectively. Example: --set-clocks -150 500")
 parser.add_argument("--set-power-limit", type=int, help="Set the power limit (in watts). Example: --set-power-limit 300")
+parser.add_argument("--set-custom-fan", type=int, help="Set a custom fan percentage. !BE CAREFUL! as this changes the fan control policy to manual!!! Only values 30-100 are accepted. ")
+parser.add_argument("--set-profile", type=int, help="Apply one of the custom profiles you've created.")
 parser.add_argument("--set-max-fan", action='store_true', help="Set all fans to maximum speed")
 parser.add_argument("--set-auto-fan", action='store_true', help="Reset fan control to automatic mode")
-parser.add_argument("--set-custom-fan", type=int, help="Set a custom fan percentage. !BE CAREFUL! as this changes the fan control policy to manual!!! Only values 30-100 are accepted. ")
-parser.add_argument("--set-profile", type=int, help="Apply on of the custom profiles you've created.")
-parser.add_argument("--no-color", action='store_true', help="Disable the use of any color at all")
 
 
 def add_sign(offset):
