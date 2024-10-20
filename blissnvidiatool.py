@@ -672,9 +672,9 @@ if args.set_clocks or args.set_power_limit or args.set_max_fan or args.set_auto_
         print()
     if args.set_profile:
         profile_number = args.set_profile
-        print(f"Loading profile {profile_number}!")
+        print(f"Loading profile {profile_number} for GPU {args.gpu_number}!")
         try:
-            with open(os.path.join(source_dir, f"profile{profile_number}.bnt"), "r", encoding="utf-8") as file:
+            with open(os.path.join(source_dir, f"profile{profile_number}_{args.gpu_number}.bnt"), "r", encoding="utf-8") as file:
                 new_core_offset = int(file.readline())
                 new_mem_offset = int(file.readline())
                 new_power_limit = int(file.readline())
