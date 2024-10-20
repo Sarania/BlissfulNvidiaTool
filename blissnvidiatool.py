@@ -83,9 +83,9 @@ def draw_dashboard(stdscr):
         """
         Loads a profile and applies settings. Takes in which profile to load
         """
-        stdscr.addstr(input_start, 0, f"Loading profile {profile_number}!")
+        stdscr.addstr(input_start, 0, f"Loading profile {profile_number} for GPU {args.gpu_number}!")
         try:
-            with open(os.path.join(source_dir, f"profile{profile_number}.bnt"), "r", encoding="utf-8") as file:
+            with open(os.path.join(source_dir, f"profile{profile_number}_{args.gpu_number}.bnt"), "r", encoding="utf-8") as file:
                 new_core_offset = int(file.readline())
                 new_mem_offset = int(file.readline())
                 new_power_limit = int(file.readline())
@@ -127,8 +127,8 @@ def draw_dashboard(stdscr):
         """
         Saves current settings to the specified profile number.
         """
-        stdscr.addstr(input_start, 0, f"Current settings will be saved as profile {profile_number}!")
-        with open(os.path.join(source_dir, f"profile{profile_number}.bnt"), "w", encoding="utf-8") as file:
+        stdscr.addstr(input_start, 0, f"Current settings will be saved as profile {profile_number} for GPU {args.gpu_number}!")
+        with open(os.path.join(source_dir, f"profile{profile_number}_{args.gpu_number}.bnt"), "w", encoding="utf-8") as file:
             file.write(str(int(current_core_offset)) + "\n")
             file.write(str(int(current_mem_offset)) + "\n")
             file.write(str(int(current_power_limit)) + "\n")
@@ -140,14 +140,14 @@ def draw_dashboard(stdscr):
         """
         Simply deletes the specified profile
         """
-        profile_path = os.path.join(source_dir, f"profile{profile_number}.bnt")
+        profile_path = os.path.join(source_dir, f"profile{profile_number}_{args.gpu_number}.bnt")
         if os.path.exists(profile_path):
             os.remove(profile_path)
-            stdscr.addstr(input_start, 0, f"Deleted profile {profile_number}!")
+            stdscr.addstr(input_start, 0, f"Deleted profile {profile_number} for GPU {args.gpu_number}!")
             profile_exists[profile_number] = False
         else:
             stdscr.addstr(input_start, 0, f"Nope, profile {profile_number} doesn't exist so we can't delete it, silly!")
-
+    global gpu
     stdscr.clear()
     curses.curs_set(0)    # Hide cursor
     curses.echo()
@@ -187,6 +187,7 @@ def draw_dashboard(stdscr):
     delay = 0
     active_profile = 0
     profile_exists = [False, False, False, False, False]  # We create this with an extra phantom element at position 0 to make the code easier to maintain, we only use 1-4
+    last_active_profile = [0, 0, 0, 0, 0, 0, 0, 0]
     if args.interactive:
         try:
             nv.nvmlDeviceSetPersistenceMode(gpu, 1)
@@ -198,8 +199,9 @@ def draw_dashboard(stdscr):
                 time.sleep(1)
             sys.exit()
         for i in range(1, 5):
-            if os.path.exists(os.path.join(source_dir, f"profile{i}.bnt")):
+            if os.path.exists(os.path.join(source_dir, f"profile{i}_{args.gpu_number}.bnt")):
                 profile_exists[i] = True
+    num_gpus = nv.nvmlDeviceGetCount()
     gpu_name = nv.nvmlDeviceGetName(gpu)
     default_power_limit = nv.nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
     stdscr.nodelay(True)
@@ -283,31 +285,37 @@ def draw_dashboard(stdscr):
             header()
             stdscr.addstr(3, 0, "Blissful Legend:", BLUE)
             stdscr.addstr(5, 2, "h", YELLOW)
+            stdscr.addstr(5, 6, "- show this help screen.")
             stdscr.addstr(6, 2, "i", YELLOW)
-            stdscr.addstr(5, 5, "- show this help screen.")
-            stdscr.addstr(6, 5, "- switch to process monitor with extra info")
-            if args.interactive:
+            stdscr.addstr(6, 6, "- switch to process monitor with extra info")
+            if args.interactive:  # Only show interactive help if we are in interactive mode
                 stdscr.addstr(7, 2, "c", YELLOW)
                 stdscr.addstr(8, 2, "m", YELLOW)
                 stdscr.addstr(9, 2, "p", YELLOW)
                 stdscr.addstr(10, 2, "f", YELLOW)
                 stdscr.addstr(11, 2, "a", YELLOW)
-                stdscr.addstr(12, 2, "1", YELLOW)
-                stdscr.addstr(13, 2, "F1", YELLOW)
-                stdscr.addstr(14, 2, "!", YELLOW)
-                stdscr.addstr(7, 5, "- set new core clock offset")
-                stdscr.addstr(8, 5, "- set new mem clock offset")
-                stdscr.addstr(9, 5, "- set new power limit")
-                stdscr.addstr(10, 5, "- set manual fan percentage")
-                stdscr.addstr(10, 32, "(CAUTION: This sets your fan control policy to manual meaning it WON'T adapt to temperature!)", YELLOW)
-                stdscr.addstr(11, 5, "- set fan control back to auto")
-                stdscr.addstr(12, 5, "- load profile")
-                stdscr.addstr(12, 19, "(also 2, 3, 4)", YELLOW)
-                stdscr.addstr(13, 5, "- save profile")
-                stdscr.addstr(13, 19, "(also F2, F3, F4)", YELLOW)
-                stdscr.addstr(14, 5, "- delete profile")
-                stdscr.addstr(14, 21, "(also @, #, $ e.g. SHIFT + profile number)", YELLOW)
-                stdscr.addstr(16, 0, "Press a key to return to the monitor!")
+                if num_gpus > 1:  # Only show the multi gpu help if more than one is available
+                    stdscr.addstr(12, 2, "<->", YELLOW)
+                    stdscr.addstr(12, 6, "- switch between available GPUs")
+                    help_offset = 1
+                else:
+                    help_offset = 0
+                stdscr.addstr(12 + help_offset, 2, "1", YELLOW)
+                stdscr.addstr(13 + help_offset, 2, "F1", YELLOW)
+                stdscr.addstr(14 + help_offset, 2, "!", YELLOW)
+                stdscr.addstr(7, 6, "- set new core clock offset")
+                stdscr.addstr(8, 6, "- set new mem clock offset")
+                stdscr.addstr(9, 6, "- set new power limit")
+                stdscr.addstr(10, 6, "- set manual fan percentage")
+                stdscr.addstr(10, 33, "(CAUTION: This sets your fan control policy to manual meaning it WON'T adapt to temperature!)", YELLOW)
+                stdscr.addstr(11, 6, "- set fan control back to auto")
+                stdscr.addstr(12 + help_offset, 6, "- load profile")
+                stdscr.addstr(12 + help_offset, 20, "(also 2, 3, 4)", YELLOW)
+                stdscr.addstr(13 + help_offset, 6, "- save profile")
+                stdscr.addstr(13 + help_offset, 20, "(also F2, F3, F4)", YELLOW)
+                stdscr.addstr(14 + help_offset, 6, "- delete profile")
+                stdscr.addstr(14 + help_offset, 22, "(also @, #, $ e.g. SHIFT + profile number)", YELLOW)
+                stdscr.addstr(16 + help_offset, 0, "Press a key to return to the monitor!")
             else:
                 stdscr.addstr(8, 0, "Press a key to return to the monitor!")
             stdscr.refresh()
@@ -404,11 +412,47 @@ def draw_dashboard(stdscr):
                 if key == ord("q"):
                     nv.nvmlShutdown()
                     sys.exit(1)
-        elif args.interactive and key in [curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4, ord("1"), ord("2"), ord("3"), ord("4"), ord("!"), ord("@"), ord("#"), ord("$"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
+        elif args.interactive and key in [curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4, curses.KEY_RIGHT, curses.KEY_LEFT, ord("1"), ord("2"), ord("3"), ord("4"), ord("!"), ord("@"), ord("#"), ord("$"), ord("c"), ord("m"), ord("p"), ord("f"), ord("a")]:
             current_profile = active_profile
             active_profile = 0
             stdscr.nodelay(False)
-            if key == ord("1"):
+            if key == curses.KEY_RIGHT and num_gpus > 1:
+                try:
+                    last_active_profile[args.gpu_number] = current_profile
+                    if args.gpu_number < num_gpus - 1:
+                        args.gpu_number += 1
+                    else:
+                        args.gpu_number = 0
+                    gpu = nv.nvmlDeviceGetHandleByIndex(args.gpu_number)
+                    gpu_name = nv.nvmlDeviceGetName(gpu)
+                    default_power_limit = nv.nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
+                    for i in range(1, 5):
+                        profile_exists[i] = False
+                        if os.path.exists(os.path.join(source_dir, f"profile{i}_{args.gpu_number}.bnt")):
+                            profile_exists[i] = True
+                    active_profile = last_active_profile[args.gpu_number]
+                except nv.NVMLError as e:
+                    stdscr.addstr(input_start, 0, f"An NVMLError prevented the operation: {e}")
+                    delay = 2
+            elif key == curses.KEY_LEFT and num_gpus > 1:
+                try:
+                    last_active_profile[args.gpu_number] = current_profile
+                    if args.gpu_number > 0:
+                        args.gpu_number -= 1
+                    else:
+                        args.gpu_number = num_gpus - 1
+                    gpu = nv.nvmlDeviceGetHandleByIndex(args.gpu_number)
+                    gpu_name = nv.nvmlDeviceGetName(gpu)
+                    default_power_limit = nv.nvmlDeviceGetPowerManagementDefaultLimit(gpu) / 1000
+                    for i in range(1, 5):
+                        profile_exists[i] = False
+                        if os.path.exists(os.path.join(source_dir, f"profile{i}_{args.gpu_number}.bnt")):
+                            profile_exists[i] = True
+                    active_profile = last_active_profile[args.gpu_number]
+                except nv.NVMLError as e:
+                    stdscr.addstr(input_start, 0, f"An NVMLError prevented the operation: {e}")
+                    delay = 2
+            elif key == ord("1"):
                 save_profile(1)
                 active_profile = 1
                 delay = 1
@@ -526,6 +570,10 @@ def draw_dashboard(stdscr):
             time.sleep(1 + delay)
             delay = 0
             stdscr.nodelay(True)
+            while key:  # Eat all the keys from the keyboard buffer to clear it for the next frame
+                key = stdscr.getch()
+                if key == -1:
+                    break
 
 
 # Execution begins here
